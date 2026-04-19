@@ -25,28 +25,106 @@
       --sab: env(safe-area-inset-bottom);
       --sal: env(safe-area-inset-left);
     }
-    .pb-safe { padding-bottom: calc(var(--sab) + 4rem); }
-    /* Hide scrollbars for a cleaner app feel */
+    .pb-safe-content { padding-bottom: calc(var(--sab) + 6rem); }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     
-    /* Ensure the app takes full height correctly on mobile */
     html, body, #root {
       height: 100%;
       height: -webkit-fill-available;
       overflow: hidden;
+      background-color: #020617;
+    }
+
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in-up { animation: fade-in-up 0.3s ease-out forwards; }
+    
+    .phase-badge {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans antialiased">
+<body class="text-slate-100 font-sans antialiased">
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useMemo } = React;
 
-    // --- Utilities ---
+    const FASTING_PHASES = [
+      {
+        min: 0, max: 3, title: "Feeding Phase", icon: "fa-utensils", color: "from-blue-500 to-indigo-600",
+        short: "Absorbing nutrients and storing energy.",
+        description: "Right after a meal, your body is busy processing incoming food. It's in 'Anabolic' (building) mode.",
+        details: [
+          { label: "Blood Sugar", val: "Rising", text: "Glucose from food enters your bloodstream for immediate energy." },
+          { label: "Insulin", val: "High", text: "Insulin is released to help move sugar into your cells and store the rest as glycogen." },
+          { label: "Metabolism", val: "Storage", text: "The body focuses on digesting food and replenishing energy reserves." }
+        ],
+        whatToExpect: "You likely feel satiated and energetic. This is when your body refuels for the fast ahead."
+      },
+      {
+        min: 3, max: 12, title: "Post-Absorptive", icon: "fa-clock", color: "from-blue-400 to-cyan-500",
+        short: "Shifting from food to stored energy.",
+        description: "Your digestive system takes a well-deserved break. The body begins to look inward for fuel.",
+        details: [
+          { label: "Insulin", val: "Dropping", text: "Levels decline, which signals your body to stop storing fat and start accessing it." },
+          { label: "Fuel Source", val: "Glycogen", text: "The body uses 'Glycogen' (stored sugar in your liver) to keep your energy stable." },
+          { label: "GI Tract", val: "Resting", text: "Digestion winds down, allowing the gut to focus on basic maintenance." }
+        ],
+        whatToExpect: "Initial hunger waves might appear as your blood sugar stabilizes. Drink water and stay busy."
+      },
+      {
+        min: 12, max: 18, title: "Early Catabolic", icon: "fa-fire-alt", color: "from-orange-400 to-red-500",
+        short: "Unlocking your fat stores.",
+        description: "Liver glycogen is running low. Your body starts breaking down fat into fatty acids for energy.",
+        details: [
+          { label: "Fat Burning", val: "Increasing", text: "The body starts 'Lipolysis'—the process of breaking down fat cells for fuel." },
+          { label: "Glucagon", val: "Rising", text: "This hormone acts as the opposite of insulin, keeping your sugar stable by using fat." },
+          { label: "Brain Fuel", val: "Transition", text: "The brain begins adapting to a mix of glucose and early ketone bodies." }
+        ],
+        whatToExpect: "Mental clarity often increases. You might feel a 'second wind' of energy as hunger fades."
+      },
+      {
+        min: 18, max: 24, title: "Metabolic Switch", icon: "fa-bolt", color: "from-amber-400 to-orange-500",
+        short: "Fat is now your primary fuel.",
+        description: "The 'Switch' is complete. You are now primarily burning fat and ketones, mimicking a ketogenic state.",
+        details: [
+          { label: "Ketones", val: "Active", text: "The liver produces ketones, a highly efficient fuel source for your brain and heart." },
+          { label: "Autophagy", val: "Starting", text: "The body begins identifying and recycling old or damaged cell components." },
+          { label: "Growth Hormone", val: "Spiking", text: "HGH levels rise to preserve muscle mass and keep your bones strong." }
+        ],
+        whatToExpect: "Hunger levels usually drop significantly. Many report a 'flow state' and high productivity."
+      },
+      {
+        min: 24, max: 48, title: "Deep Autophagy", icon: "fa-recycle", color: "from-emerald-400 to-teal-500",
+        short: "Peak cellular cleanup and repair.",
+        description: "Your cells are in deep self-cleaning mode. This is often called the 'Spring Cleaning' of the body.",
+        details: [
+          { label: "Cell Repair", val: "Peak", text: "Autophagy is in high gear, potentially reducing inflammation and repairing DNA." },
+          { label: "Insulin", val: "Baseline", text: "Insulin sensitivity is maximized, which is great for long-term metabolic health." },
+          { label: "Immune System", val: "Renewing", text: "Old immune cells are recycled, making room for fresh, more efficient ones." }
+        ],
+        whatToExpect: "You feel light and focused. Ensure you are getting enough electrolytes (salt, magnesium) during this stage."
+      },
+      {
+        min: 48, max: 999, title: "Immune Reset", icon: "fa-shield-halved", color: "from-purple-500 to-indigo-600",
+        short: "Deep ketosis and system regeneration.",
+        description: "Extended fasting triggers the regeneration of immune cells and maximizes fat adaptation.",
+        details: [
+          { label: "Muscle Sparing", val: "Efficient", text: "Adrenaline keeps your metabolic rate high while ketones protect your muscle mass." },
+          { label: "Stem Cells", val: "Triggered", text: "Some studies suggest that 48h+ fasts trigger stem-cell based regeneration." },
+          { label: "Ghrelin", val: "Suppressed", text: "The hunger hormone ghrelin stabilizes, often making you feel less hungry than at 12 hours." }
+        ],
+        whatToExpect: "Deep calm and mental stillness. Breaking this fast requires careful, light re-feeding."
+      }
+    ];
+
     const getTodayStr = () => new Date().toISOString().split('T')[0];
-
     const getPast7Days = () => {
       const dates = [];
       for (let i = 6; i >= 0; i--) {
@@ -56,9 +134,11 @@
       }
       return dates;
     };
-
-    const getDayName = (dateStr) => {
-      return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' });
+    const getDayName = (dateStr) => new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' });
+    const getTargetHours = (protocolStr) => {
+      if (!protocolStr) return 16;
+      const match = protocolStr.match(/(\d+)/);
+      return match ? parseInt(match[0]) : 16;
     };
 
     const DEFAULT_SETTINGS = {
@@ -68,170 +148,76 @@
       fatGoal: 65,
       primaryFastingProtocol: '16:8 Fast',
       fastingOptions: ['No Fast', '16:8 Fast', '18:6 Fast', '20:4 Warrior', 'OMAD / 24h'],
-      quickAdds: [
-        { label: 'Yogurt', amount: 20 },
-        { label: 'Tuna & Eggs', amount: 35 }
-      ],
+      quickAdds: [{ label: 'Yogurt', amount: 20 }, { label: 'Tuna & Eggs', amount: 35 }],
       supplements: ['magnesium', 'potassium', 'salt']
     };
 
-    const getTargetHours = (protocolStr) => {
-      if (!protocolStr) return 16;
-      const match = protocolStr.match(/(\d+)/);
-      return match ? parseInt(match[0]) : 16;
-    };
-
     const DEFAULT_LOG_OBJ = {
-      fasting: 'No Fast',
-      protein: 0,
-      calories: 0,
-      fat: 0,
-      carbs: 0,
-      supplements: {},
-      completedFasts: []
+      fasting: 'No Fast', protein: 0, calories: 0, fat: 0, carbs: 0, supplements: {}, completedFasts: []
     };
 
-    // --- Main App Component ---
     function App() {
       const [activeTab, setActiveTab] = useState('daily');
+      const [now, setNow] = useState(Date.now());
       
-      // Wizard States
       const [wizardStep, setWizardStep] = useState(1);
       const [wizardWarning, setWizardWarning] = useState('');
       const [wizardError, setWizardError] = useState('');
       const [wizardData, setWizardData] = useState({
-        gender: 'male',
-        currentWeight: 82,
-        targetWeight: 72,
-        proteinGoal: 160,
-        calorieGoal: 2000,
-        carbGoal: 150,
-        fatGoal: 65,
-        carbPref: 'balanced',
-        fastingProtocol: '16:8 Fast'
+        gender: 'male', currentWeight: 82, targetWeight: 72, proteinGoal: 160, calorieGoal: 2000, carbGoal: 150, fatGoal: 65, carbPref: 'balanced', fastingProtocol: '16:8 Fast'
       });
 
-      // Settings Form States
-      const [newFasting, setNewFasting] = useState('');
-      const [newSup, setNewSup] = useState('');
-      const [newQuickLabel, setNewQuickLabel] = useState('');
-      const [newQuickAmount, setNewQuickAmount] = useState('');
+      const [showFastEditor, setShowFastEditor] = useState(false);
+      const [editStartTime, setEditStartTime] = useState('');
+      const [showPhasesModal, setShowPhasesModal] = useState(false);
+      const [modalPhaseIndex, setModalPhaseIndex] = useState(0);
 
-      // App State with LocalStorage Persistence
       const [appData, setAppData] = useState(() => {
         const saved = localStorage.getItem('cutTrackerData');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (!parsed.settings) parsed.settings = DEFAULT_SETTINGS;
-          if (!parsed.settings.calorieGoal) parsed.settings.calorieGoal = 2000;
-          if (!parsed.settings.carbGoal) parsed.settings.carbGoal = 150;
-          if (!parsed.settings.fatGoal) parsed.settings.fatGoal = 65;
-          if (!parsed.settings.primaryFastingProtocol) parsed.settings.primaryFastingProtocol = '16:8 Fast';
-          if (!parsed.currentFast) parsed.currentFast = { isActive: false, startTime: null, targetHours: getTargetHours(parsed.settings.primaryFastingProtocol) };
-          if (typeof parsed.wizardCompleted === 'undefined') parsed.wizardCompleted = true; 
+          if (!parsed.currentFast) parsed.currentFast = { isActive: false, startTime: null, targetHours: 16 };
           return parsed;
         }
         return {
-          wizardCompleted: false,
-          startDate: getTodayStr(),
-          startWeight: 82,
-          currentWeight: 82,
-          targetWeight: 72,
-          currentFast: { isActive: false, startTime: null, targetHours: 16 },
-          logs: {},
-          settings: DEFAULT_SETTINGS
+          wizardCompleted: false, startDate: getTodayStr(), startWeight: 82, currentWeight: 82, targetWeight: 72, currentFast: { isActive: false, startTime: null, targetHours: 16 }, logs: {}, settings: DEFAULT_SETTINGS
         };
       });
 
       const today = getTodayStr();
-      
-      // Ensure today's log exists
+
+      useEffect(() => { localStorage.setItem('cutTrackerData', JSON.stringify(appData)); }, [appData]);
+      useEffect(() => {
+        let interval;
+        if (appData.currentFast?.isActive) interval = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(interval);
+      }, [appData.currentFast?.isActive]);
+
       useEffect(() => {
         if (!appData.logs[today]) {
           setAppData(prev => ({
             ...prev,
-            logs: {
-              ...prev.logs,
-              [today]: {
-                ...DEFAULT_LOG_OBJ,
-                fasting: prev.settings.primaryFastingProtocol || prev.settings.fastingOptions[0] || 'No Fast'
-              }
-            }
+            logs: { ...prev.logs, [today]: { ...DEFAULT_LOG_OBJ, fasting: prev.settings.primaryFastingProtocol || 'No Fast' } }
           }));
         }
-      }, [today, appData.settings.fastingOptions, appData.settings.primaryFastingProtocol]);
-
-      // Save to LocalStorage whenever appData changes
-      useEffect(() => {
-        localStorage.setItem('cutTrackerData', JSON.stringify(appData));
-      }, [appData]);
+      }, [today]);
 
       const updateTodayLog = (updates) => {
         setAppData(prev => {
-          const currentLog = prev.logs[today] || {
-            ...DEFAULT_LOG_OBJ,
-            fasting: prev.settings.primaryFastingProtocol || 'No Fast'
-          };
-          return {
-            ...prev,
-            logs: {
-              ...prev.logs,
-              [today]: { ...currentLog, ...updates }
-            }
-          };
+          const currentLog = prev.logs[today] || DEFAULT_LOG_OBJ;
+          return { ...prev, logs: { ...prev.logs, [today]: { ...currentLog, ...updates } } };
         });
       };
 
-      const updateSettings = (updates) => {
-        setAppData(prev => ({
-          ...prev,
-          settings: { ...prev.settings, ...updates }
-        }));
-      };
-
-      const updateSupplement = (key) => {
-        const currentLog = appData.logs[today] || DEFAULT_LOG_OBJ;
-        const currentVal = currentLog.supplements?.[key] || false;
-        updateTodayLog({
-          supplements: { ...(currentLog.supplements || {}), [key]: !currentVal }
-        });
-      };
-
-      const todayLog = appData.logs[today] || {
-        ...DEFAULT_LOG_OBJ,
-        fasting: appData.settings.primaryFastingProtocol || 'No Fast'
-      };
-
-      // --- Fasting Timer Logic ---
-      const [now, setNow] = useState(Date.now());
-      const [showFastEditor, setShowFastEditor] = useState(false);
-      const [editStartTime, setEditStartTime] = useState('');
-      const [editTargetHours, setEditTargetHours] = useState(16);
-
-      useEffect(() => {
-        let interval;
-        if (appData.currentFast?.isActive) {
-          interval = setInterval(() => setNow(Date.now()), 1000);
-        }
-        return () => clearInterval(interval);
-      }, [appData.currentFast?.isActive]);
-
-      const toDatetimeLocal = (date) => {
-        const tzOffset = date.getTimezoneOffset() * 60000;
-        return new Date(date - tzOffset).toISOString().slice(0, 16);
-      };
+      const updateSettings = (updates) => { setAppData(prev => ({ ...prev, settings: { ...prev.settings, ...updates } })); };
+      const handleDailyInput = (field, value) => { const num = parseFloat(value); updateTodayLog({ [field]: isNaN(num) ? 0 : num }); };
+      const handleSettingInput = (field, value) => { const num = parseFloat(value); updateSettings({ [field]: isNaN(num) ? 0 : num }); };
 
       const handleStartFast = (retroactiveDate = null, target = null) => {
-        const defaultTarget = target || getTargetHours(appData.settings.primaryFastingProtocol);
-        const startObj = retroactiveDate ? new Date(retroactiveDate) : new Date();
-        
+        const start = retroactiveDate ? new Date(retroactiveDate) : new Date();
         setAppData(prev => ({
-          ...prev,
-          currentFast: {
-            isActive: true,
-            startTime: startObj.toISOString(),
-            targetHours: defaultTarget
-          }
+          ...prev, currentFast: { isActive: true, startTime: start.toISOString(), targetHours: target || getTargetHours(prev.settings.primaryFastingProtocol) }
         }));
         setShowFastEditor(false);
         setNow(Date.now());
@@ -240,976 +226,336 @@
       const handleEndFast = () => {
         setAppData(prev => {
           const fast = prev.currentFast;
-          if (!fast || !fast.isActive || !fast.startTime) return prev;
-
-          const startMs = new Date(fast.startTime).getTime();
-          const elapsedMs = Date.now() - startMs;
-          const elapsedHours = (elapsedMs / (1000 * 60 * 60)).toFixed(2);
-
-          const currentLog = prev.logs[today] || { ...DEFAULT_LOG_OBJ, fasting: prev.settings.primaryFastingProtocol };
-          const completedFasts = currentLog.completedFasts || [];
-
+          if (!fast.isActive) return prev;
+          const elapsedHours = (Date.now() - new Date(fast.startTime).getTime()) / (1000 * 3600);
+          const log = prev.logs[today] || DEFAULT_LOG_OBJ;
           return {
-            ...prev,
-            currentFast: { ...fast, isActive: false },
-            logs: {
-              ...prev.logs,
-              [today]: {
-                ...currentLog,
-                completedFasts: [...completedFasts, { durationHours: Number(elapsedHours), targetHours: fast.targetHours }]
-              }
-            }
+            ...prev, currentFast: { isActive: false, startTime: null, targetHours: 16 },
+            logs: { ...prev.logs, [today]: { ...log, completedFasts: [...(log.completedFasts || []), { durationHours: Number(elapsedHours.toFixed(2)), targetHours: fast.targetHours }] } }
           };
         });
       };
 
-      const formatTime = (ms) => {
-        if (ms < 0) return "00:00:00";
-        const totalSeconds = Math.floor(ms / 1000);
-        const h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
-        const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-        const s = (totalSeconds % 60).toString().padStart(2, '0');
-        return `${h}:${m}:${s}`;
-      };
-
-      // --- Wizard Logic ---
       const calculateMacros = (weight, totalCals, protein, pref) => {
         const availableCals = Math.max(0, totalCals - (protein * 4));
-        if (pref === 'low') {
-          const carbs = Math.max(0, 50);
-          const fat = Math.max(0, Math.round((availableCals - (carbs * 4)) / 9));
-          return { carbs, fat };
-        } else if (pref === 'high') {
-          const fat = Math.max(0, Math.round(weight * 0.6)); // min fat
-          const carbs = Math.max(0, Math.round((availableCals - (fat * 9)) / 4));
-          return { carbs, fat };
-        } else {
-          // balanced
-          const carbs = Math.max(0, Math.round((availableCals * 0.5) / 4));
-          const fat = Math.max(0, Math.round((availableCals * 0.5) / 9));
-          return { carbs, fat };
-        }
-      };
-
-      const proceedToStep3 = () => {
-        const w = wizardData.currentWeight || 82;
-        const t = wizardData.targetWeight || 72;
-        const lossPercent = ((w - t) / w) * 100;
-
-        setWizardError('');
-        setWizardWarning('');
-
-        if (t >= w) {
-          setWizardError("Target weight must be lower than current weight.");
-          return;
-        }
-        
-        if (lossPercent > 15) {
-          setWizardWarning(`Losing more than 15% in 2 months is very aggressive. Default calculations aim for a safe maximum deficit, but your ultimate target will just take longer.`);
-        }
-
-        const tdee = w * (wizardData.gender === 'male' ? 24 : 22) * 1.2;
-        
-        const maxSafeWeeklyLossKg = w * 0.01;
-        const maxSafeDailyDeficit = (maxSafeWeeklyLossKg * 7700) / 7;
-        
-        let recCals = Math.round(tdee - maxSafeDailyDeficit);
-        const recProtein = Math.round(w * 2.0); 
-        
-        const minCals = wizardData.gender === 'male' ? 1500 : 1200;
-        const minCalsForProteinAndFat = (recProtein * 4) + 200; 
-        recCals = Math.max(minCals, minCalsForProteinAndFat, recCals);
-        
-        const { carbs, fat } = calculateMacros(w, recCals, recProtein, wizardData.carbPref);
-
-        setWizardData(prev => ({
-          ...prev,
-          proteinGoal: recProtein,
-          calorieGoal: recCals,
-          carbGoal: carbs,
-          fatGoal: fat
-        }));
-        setWizardStep(3);
-      };
-
-      const handleCarbPrefChange = (pref) => {
-        const { carbs, fat } = calculateMacros(wizardData.currentWeight || 82, wizardData.calorieGoal, wizardData.proteinGoal, pref);
-        setWizardData(prev => ({ ...prev, carbPref: pref, carbGoal: carbs, fatGoal: fat }));
+        let carbs, fat;
+        if (pref === 'low') { carbs = 50; fat = Math.round((availableCals - (carbs * 4)) / 9); }
+        else if (pref === 'high') { fat = Math.round(weight * 0.6); carbs = Math.round((availableCals - (fat * 9)) / 4); }
+        else { carbs = Math.round((availableCals * 0.5) / 4); fat = Math.round((availableCals * 0.5) / 9); }
+        return { carbs: Math.max(0, carbs), fat: Math.max(0, fat) };
       };
 
       const handleManualMacroChange = (field, value) => {
         setWizardData(prev => {
           const newData = { ...prev, [field]: value };
-          if (field === 'proteinGoal' || field === 'carbGoal' || field === 'fatGoal') {
+          if (['proteinGoal', 'carbGoal', 'fatGoal'].includes(field)) {
             newData.calorieGoal = (newData.proteinGoal * 4) + (newData.carbGoal * 4) + (newData.fatGoal * 9);
           } else if (field === 'calorieGoal') {
-            const { carbs, fat } = calculateMacros(newData.currentWeight || 82, newData.calorieGoal, newData.proteinGoal, newData.carbPref);
-            newData.carbGoal = carbs;
-            newData.fatGoal = fat;
+            const { carbs, fat } = calculateMacros(newData.currentWeight, newData.calorieGoal, newData.proteinGoal, newData.carbPref);
+            newData.carbGoal = carbs; newData.fatGoal = fat;
           }
           return newData;
         });
       };
 
-      const finishWizard = () => {
-        setAppData(prev => {
-          const updatedFastingOptions = prev.settings.fastingOptions.includes(wizardData.fastingProtocol) 
-            ? prev.settings.fastingOptions 
-            : [wizardData.fastingProtocol, ...prev.settings.fastingOptions];
-            
-          return {
-            ...prev,
-            wizardCompleted: true,
-            startWeight: wizardData.currentWeight,
-            currentWeight: wizardData.currentWeight,
-            targetWeight: wizardData.targetWeight,
-            settings: {
-              ...prev.settings,
-              proteinGoal: wizardData.proteinGoal,
-              calorieGoal: wizardData.calorieGoal,
-              carbGoal: wizardData.carbGoal,
-              fatGoal: wizardData.fatGoal,
-              primaryFastingProtocol: wizardData.fastingProtocol,
-              fastingOptions: updatedFastingOptions
-            },
-            logs: {
-              ...prev.logs,
-              [today]: {
-                ...(prev.logs[today] || DEFAULT_LOG_OBJ),
-                fasting: wizardData.fastingProtocol
-              }
-            }
-          };
-        });
-      };
-
-      const handleDailyInput = (field, value) => {
-          const num = parseInt(value, 10);
-          updateTodayLog({ [field]: isNaN(num) ? 0 : num });
-      };
-      
-      const handleSettingInput = (field, value) => {
-          const num = parseInt(value, 10);
-          updateSettings({ [field]: isNaN(num) ? 0 : num });
-      };
-
       const renderWizard = () => (
-        <div className="min-h-screen bg-slate-950 font-sans text-slate-100 flex justify-center items-center p-4">
-          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl">
-            
+        <div className="min-h-screen bg-slate-950 flex justify-center items-center p-4 overflow-y-auto no-scrollbar">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6">
             {wizardStep === 1 && (
-              <div className="space-y-6 animate-in fade-in zoom-in duration-300">
-                <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-500/20">
-                  <i className="fas fa-exclamation-triangle text-amber-500" style={{fontSize: 32}}></i>
+              <div className="text-center space-y-6 animate-in fade-in zoom-in">
+                <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto border border-amber-500/20">
+                  <i className="fas fa-triangle-exclamation text-amber-500 text-3xl"></i>
                 </div>
-                <h2 className="text-2xl font-bold text-center text-white">Welcome to Cut & Fast</h2>
-                <div className="bg-slate-800/50 rounded-xl p-4 text-sm text-slate-300 leading-relaxed border border-slate-700/50">
-                  <p className="mb-3">This wizard will help you set up baseline goals based on scientific research for an aggressive cut <strong>(up to 15% weight loss in 2 months)</strong>.</p>
-                  <p className="text-amber-400 font-medium">DISCLAIMER: This is a recommendation, not medical advice. I am not a doctor. Please consult a physician before starting aggressive fasting or caloric deficits.</p>
+                <h2 className="text-2xl font-bold">Welcome to Cut & Fast</h2>
+                <div className="bg-slate-800/50 rounded-xl p-4 text-sm text-slate-300 border border-slate-700/50 text-left">
+                   <p className="text-amber-400 font-bold mb-2 uppercase tracking-tighter">Medical Disclaimer</p>
+                   <p>This app provides recommendations based on general research. I am not a doctor. Consult a professional before starting aggressive fasting or extreme deficits.</p>
                 </div>
-                <button 
-                  onClick={() => setWizardStep(2)}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors"
-                >
-                  I Understand <i className="fas fa-chevron-right" style={{fontSize: 16}}></i>
-                </button>
+                <button onClick={() => setWizardStep(2)} className="w-full bg-blue-600 py-4 rounded-xl font-bold">I Understand <i className="fas fa-chevron-right ml-2"></i></button>
               </div>
             )}
-
             {wizardStep === 2 && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-right duration-300">
-                <h2 className="text-2xl font-bold text-white text-center">Your Baseline Info</h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-2">Gender</label>
-                    <div className="flex gap-3">
-                      <button onClick={() => setWizardData({...wizardData, gender: 'male'})} className={`flex-1 py-3 rounded-xl border transition-all ${wizardData.gender === 'male' ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>Male</button>
-                      <button onClick={() => setWizardData({...wizardData, gender: 'female'})} className={`flex-1 py-3 rounded-xl border transition-all ${wizardData.gender === 'female' ? 'bg-purple-500/20 border-purple-500 text-purple-400' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>Female</button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-2">Current Weight (kg)</label>
-                    <input type="number" value={wizardData.currentWeight || ''} onChange={e => setWizardData({...wizardData, currentWeight: Number(e.target.value)})} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white text-lg focus:outline-none focus:border-emerald-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-2">Target Weight (kg) <span className="text-xs text-slate-500">- For tracking</span></label>
-                    <input type="number" value={wizardData.targetWeight || ''} onChange={e => setWizardData({...wizardData, targetWeight: Number(e.target.value)})} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white text-lg focus:outline-none focus:border-emerald-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-2">Primary Fasting Protocol</label>
-                    <select value={wizardData.fastingProtocol} onChange={e => setWizardData({...wizardData, fastingProtocol: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white text-lg focus:outline-none focus:border-emerald-500 appearance-none">
-                      <option value="No Fast">No Fast</option>
-                      <option value="16:8 Fast">16:8 Fast</option>
-                      <option value="18:6 Fast">18:6 Fast</option>
-                      <option value="20:4 Warrior">20:4 Warrior</option>
-                      <option value="OMAD / 24h">OMAD / 24h</option>
-                    </select>
-                  </div>
+              <div className="space-y-4 animate-in fade-in slide-in-from-right">
+                <h2 className="text-xl font-bold text-center">Your Profile</h2>
+                <div className="flex gap-2">
+                  <button onClick={()=>setWizardData({...wizardData, gender:'male'})} className={`flex-1 py-3 rounded-xl border ${wizardData.gender==='male'?'bg-blue-600 border-blue-500':'bg-slate-800 border-slate-700'}`}>Male</button>
+                  <button onClick={()=>setWizardData({...wizardData, gender:'female'})} className={`flex-1 py-3 rounded-xl border ${wizardData.gender==='female'?'bg-purple-600 border-purple-500':'bg-slate-800 border-slate-700'}`}>Female</button>
                 </div>
-
-                {wizardError && (
-                  <div className="mt-4 p-3 bg-red-500/10 border border-red-500/50 rounded-xl text-red-400 text-sm text-center">
-                    {wizardError}
-                  </div>
-                )}
-                {wizardWarning && !wizardError && (
-                  <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/50 rounded-xl text-amber-400 text-sm text-center">
-                    {wizardWarning}
-                  </div>
-                )}
-
-                <div className="flex gap-3 pt-4">
-                  <button onClick={() => setWizardStep(1)} className="p-4 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700"><i className="fas fa-chevron-left" style={{fontSize: 20}}></i></button>
-                  <button onClick={proceedToStep3} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2">Calculate <i className="fas fa-chevron-right" style={{fontSize: 20}}></i></button>
+                <div><label className="text-xs text-slate-500 font-bold uppercase">Current Weight (kg)</label><input type="number" value={wizardData.currentWeight} onChange={e=>setWizardData({...wizardData, currentWeight: Number(e.target.value)})} className="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-blue-500" /></div>
+                <div><label className="text-xs text-slate-500 font-bold uppercase">Target Weight (kg)</label><input type="number" value={wizardData.targetWeight} onChange={e=>setWizardData({...wizardData, targetWeight: Number(e.target.value)})} className="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-blue-500" /></div>
+                {wizardError && <p className="text-red-400 text-xs text-center">{wizardError}</p>}
+                <div className="flex gap-2">
+                  <button onClick={()=>setWizardStep(1)} className="bg-slate-800 px-6 rounded-xl"><i className="fas fa-chevron-left"></i></button>
+                  <button onClick={() => {
+                    const loss = ((wizardData.currentWeight - wizardData.targetWeight)/wizardData.currentWeight)*100;
+                    if(wizardData.targetWeight >= wizardData.currentWeight) return setWizardError("Target must be lower.");
+                    if(loss > 15) setWizardWarning("Target loss > 15% is aggressive. Proceed with caution.");
+                    const tdee = wizardData.currentWeight * (wizardData.gender === 'male' ? 24 : 22) * 1.2;
+                    const deficit = ((wizardData.currentWeight - wizardData.targetWeight)*7700)/60;
+                    let cals = Math.round(tdee - deficit);
+                    const prot = Math.round(wizardData.currentWeight * 2);
+                    cals = Math.max(cals, (prot*4)+300);
+                    const {carbs, fat} = calculateMacros(wizardData.currentWeight, cals, prot, 'balanced');
+                    setWizardData({...wizardData, calorieGoal: cals, proteinGoal: prot, carbGoal: carbs, fatGoal: fat});
+                    setWizardStep(3);
+                  }} className="flex-1 bg-blue-600 py-4 rounded-xl font-bold">Next</button>
                 </div>
               </div>
             )}
-
             {wizardStep === 3 && (
-               <div className="space-y-6 animate-in fade-in slide-in-from-right duration-300">
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-white mb-2">Recommendations</h2>
-                  <p className="text-sm text-slate-400">Based on a safe aggressive deficit.</p>
+              <div className="space-y-4 animate-in fade-in slide-in-from-right">
+                <h2 className="text-xl font-bold text-center">Your Strategy</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-800 p-3 rounded-xl border border-slate-700"><label className="text-[10px] text-slate-500 font-bold uppercase">Protein</label><input type="number" value={wizardData.proteinGoal} onChange={e=>handleManualMacroChange('proteinGoal', Number(e.target.value))} className="w-full bg-transparent text-xl font-bold outline-none" /></div>
+                  <div className="bg-slate-800 p-3 rounded-xl border border-slate-700"><label className="text-[10px] text-slate-500 font-bold uppercase">Calories</label><input type="number" value={wizardData.calorieGoal} onChange={e=>handleManualMacroChange('calorieGoal', Number(e.target.value))} className="w-full bg-transparent text-xl font-bold outline-none" /></div>
+                  <div className="bg-slate-800 p-3 rounded-xl border border-slate-700"><label className="text-[10px] text-slate-500 font-bold uppercase">Carbs</label><input type="number" value={wizardData.carbGoal} onChange={e=>handleManualMacroChange('carbGoal', Number(e.target.value))} className="w-full bg-transparent text-xl font-bold outline-none" /></div>
+                  <div className="bg-slate-800 p-3 rounded-xl border border-slate-700"><label className="text-[10px] text-slate-500 font-bold uppercase">Fat</label><input type="number" value={wizardData.fatGoal} onChange={e=>handleManualMacroChange('fatGoal', Number(e.target.value))} className="w-full bg-transparent text-xl font-bold outline-none" /></div>
                 </div>
-
-                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                  <label className="block text-sm font-semibold text-slate-300 mb-3">Carb Preference</label>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleCarbPrefChange('low')} className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-all ${wizardData.carbPref === 'low' ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400' : 'bg-slate-900 border-slate-700 text-slate-400'}`}>Low Carb</button>
-                    <button onClick={() => handleCarbPrefChange('balanced')} className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-all ${wizardData.carbPref === 'balanced' ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400' : 'bg-slate-900 border-slate-700 text-slate-400'}`}>Balanced</button>
-                    <button onClick={() => handleCarbPrefChange('high')} className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-all ${wizardData.carbPref === 'high' ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400' : 'bg-slate-900 border-slate-700 text-slate-400'}`}>High Carb</button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-                    <label className="block text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1">Protein (g)</label>
-                    <input type="number" value={wizardData.proteinGoal} onChange={e => handleManualMacroChange('proteinGoal', Number(e.target.value) || 0)} className="w-full bg-transparent text-xl font-bold text-white focus:outline-none" />
-                  </div>
-
-                  <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-                    <label className="block text-xs font-semibold text-blue-400 uppercase tracking-wider mb-1">Calories</label>
-                    <input type="number" value={wizardData.calorieGoal} onChange={e => handleManualMacroChange('calorieGoal', Number(e.target.value) || 0)} className="w-full bg-transparent text-xl font-bold text-white focus:outline-none" />
-                  </div>
-                  
-                  <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
-                    <label className="block text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1">Carbs (g)</label>
-                    <input type="number" value={wizardData.carbGoal} onChange={e => handleManualMacroChange('carbGoal', Number(e.target.value) || 0)} className="w-full bg-transparent text-xl font-bold text-white focus:outline-none" />
-                  </div>
-                  
-                  <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
-                    <label className="block text-xs font-semibold text-rose-400 uppercase tracking-wider mb-1">Fat (g)</label>
-                    <input type="number" value={wizardData.fatGoal} onChange={e => handleManualMacroChange('fatGoal', Number(e.target.value) || 0)} className="w-full bg-transparent text-xl font-bold text-white focus:outline-none" />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button onClick={() => setWizardStep(2)} className="p-4 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700"><i className="fas fa-chevron-left" style={{fontSize: 20}}></i></button>
-                  <button onClick={finishWizard} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2">Start Tracking <i className="fas fa-chevron-right" style={{fontSize: 20}}></i></button>
-                </div>
-               </div>
+                <button onClick={() => {
+                  setAppData({...appData, wizardCompleted: true, startWeight: wizardData.currentWeight, currentWeight: wizardData.currentWeight, targetWeight: wizardData.targetWeight, settings: { ...appData.settings, proteinGoal: wizardData.proteinGoal, calorieGoal: wizardData.calorieGoal, carbGoal: wizardData.carbGoal, fatGoal: wizardData.fatGoal } });
+                }} className="w-full bg-emerald-600 py-4 rounded-xl font-bold">Launch Tracker</button>
+              </div>
             )}
-            
           </div>
         </div>
       );
 
-      // --- Views ---
+      const FastingPhasesModal = () => {
+        const phase = FASTING_PHASES[modalPhaseIndex];
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-300">
+            <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-md overflow-hidden relative shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className={`p-10 text-center bg-gradient-to-br ${phase.color} relative overflow-hidden`}>
+                <div className="absolute top-0 right-0 p-8 opacity-10"><i className={`fas ${phase.icon} text-9xl`}></i></div>
+                <button onClick={() => setShowPhasesModal(false)} className="absolute top-6 right-6 text-white/70 bg-black/20 w-10 h-10 flex items-center justify-center rounded-full hover:bg-black/40 transition-all"><i className="fas fa-times"></i></button>
+                <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-white/30 backdrop-blur-lg shadow-xl">
+                  <i className={`fas ${phase.icon} text-white text-4xl`}></i>
+                </div>
+                <h3 className="text-3xl font-black text-white tracking-tight mb-2">{phase.title}</h3>
+                <div className="phase-badge inline-block px-4 py-1.5 rounded-full text-xs font-bold text-white/90 uppercase tracking-widest">
+                  {phase.min}{phase.max === 999 ? '+' : `-${phase.max}`} Hours
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 overflow-y-auto no-scrollbar flex-1">
+                <div className="mb-8">
+                  <p className="text-slate-300 text-lg font-medium leading-relaxed italic text-center px-2">"{phase.short}"</p>
+                  <p className="text-slate-400 text-sm mt-4 leading-relaxed text-center">{phase.description}</p>
+                </div>
+
+                <div className="space-y-4 mb-8">
+                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-2">Metabolic Markers</h4>
+                  {phase.details.map((item, i) => (
+                    <div key={i} className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700/50 flex gap-4">
+                      <div className="w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-transparent"></div>
+                      <div>
+                        <div className="flex justify-between items-baseline mb-1">
+                          <span className="text-xs font-bold text-slate-300">{item.label}</span>
+                          <span className="text-[10px] font-black text-blue-400 uppercase">{item.val}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 leading-normal">{item.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="bg-emerald-500/5 border border-emerald-500/10 p-5 rounded-3xl">
+                  <h4 className="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-2">
+                    <i className="fas fa-lightbulb"></i> What You Feel
+                  </h4>
+                  <p className="text-xs text-slate-300 leading-relaxed italic">{phase.whatToExpect}</p>
+                </div>
+              </div>
+
+              {/* Nav */}
+              <div className="p-6 border-t border-slate-800 flex justify-between items-center bg-slate-900/50">
+                <button disabled={modalPhaseIndex === 0} onClick={() => setModalPhaseIndex(m => m - 1)} className="w-12 h-12 flex items-center justify-center text-slate-500 disabled:opacity-0 active:scale-90 transition-all"><i className="fas fa-chevron-left text-xl"></i></button>
+                <div className="flex gap-2">{FASTING_PHASES.map((_, i) => <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === modalPhaseIndex ? 'w-8 bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'w-1.5 bg-slate-700'}`}></div>)}</div>
+                <button disabled={modalPhaseIndex === FASTING_PHASES.length - 1} onClick={() => setModalPhaseIndex(m => m + 1)} className="w-12 h-12 flex items-center justify-center text-slate-500 disabled:opacity-0 active:scale-90 transition-all"><i className="fas fa-chevron-right text-xl"></i></button>
+              </div>
+            </div>
+          </div>
+        );
+      };
 
       const renderDailyFocus = () => {
         const fast = appData.currentFast || { isActive: false, startTime: null, targetHours: 16 };
         const active = fast.isActive;
-        const startMs = fast.startTime ? new Date(fast.startTime).getTime() : 0;
-        const elapsedMs = active ? now - startMs : 0;
-        const targetMs = fast.targetHours * 3600 * 1000;
-        const progress = Math.min(100, (elapsedMs / targetMs) * 100);
-        const remainingMs = targetMs - elapsedMs;
+        const elapsedMs = active ? now - new Date(fast.startTime).getTime() : 0;
+        const elapsedHours = elapsedMs / (1000 * 3600);
+        const progress = Math.min(100, (elapsedHours / fast.targetHours) * 100);
+        const currentPhaseIdx = FASTING_PHASES.findIndex(p => elapsedHours >= p.min && elapsedHours < p.max);
+        const currentPhase = FASTING_PHASES[currentPhaseIdx >= 0 ? currentPhaseIdx : FASTING_PHASES.length-1];
+        const log = appData.logs[today] || DEFAULT_LOG_OBJ;
 
         return (
-        <div className="space-y-6 pb-safe">
-          <h2 className="text-2xl font-bold text-white mb-4">Daily Focus</h2>
-
-          {/* Fasting Timer Card */}
-          <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700 relative overflow-hidden">
-            {active && progress >= 100 && <div className="absolute inset-0 bg-emerald-500/10 animate-pulse pointer-events-none" />}
-            
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                <i className="fas fa-stopwatch" style={{fontSize: 16}}></i> Fasting Timer
-              </h3>
-              <div className="flex items-center gap-3">
-                {active && (
-                  <button onClick={() => {
-                    setEditStartTime(toDatetimeLocal(new Date(fast.startTime)));
-                    setEditTargetHours(fast.targetHours);
-                    setShowFastEditor(!showFastEditor);
-                  }} className="text-slate-400 hover:text-white p-1">
-                    <i className="fas fa-edit" style={{fontSize: 16}}></i>
-                  </button>
-                )}
-                {/* Protocol Select Integrated into Card */}
-                <select 
-                  value={todayLog.fasting} 
-                  onChange={(e) => updateTodayLog({ fasting: e.target.value })}
-                  className="bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded-lg px-2 py-1 outline-none focus:border-emerald-500"
-                >
-                  {appData.settings.fastingOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {active ? (
-              <div className="text-center">
-                <div className="text-5xl font-bold text-white tracking-wider mb-2 font-mono">
-                  {formatTime(elapsedMs)}
+          <div className="space-y-6 pb-safe-content animate-fade-in-up">
+             <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-xl relative overflow-hidden">
+                <div className="flex justify-between items-start mb-6">
+                   <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-widest"><i className="fas fa-stopwatch"></i> Timer</div>
+                   <select value={log.fasting} onChange={e => updateTodayLog({fasting: e.target.value})} className="bg-slate-900 text-slate-300 text-[10px] font-bold py-1 px-2 rounded-lg border border-slate-700 outline-none">
+                      {appData.settings.fastingOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                   </select>
                 </div>
-                <div className="text-slate-400 text-sm mb-4">
-                  {remainingMs > 0 ? `Remaining: ${formatTime(remainingMs)}` : 'Goal Reached!'}
-                </div>
-                
-                {/* Progress */}
-                <div className="h-3 bg-slate-900 rounded-full overflow-hidden mb-4">
-                  <div 
-                    className={`h-full transition-all duration-1000 ${progress >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                
-                <div className="flex justify-between text-xs text-slate-500 mb-5">
-                  <span>Started: {new Date(fast.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                  <span>Target: {fast.targetHours}h</span>
-                </div>
-
-                {showFastEditor && (
-                  <div className="bg-slate-900/80 p-4 rounded-xl mb-4 text-left border border-slate-700">
-                    <div className="mb-3">
-                      <label className="block text-xs text-slate-400 mb-1">Edit Start Time</label>
-                      <input 
-                        type="datetime-local" 
-                        value={editStartTime}
-                        onChange={e => setEditStartTime(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div className="mb-3">
-                      <label className="block text-xs text-slate-400 mb-1">Target Hours</label>
-                      <input 
-                        type="number" 
-                        value={editTargetHours}
-                        onChange={e => setEditTargetHours(Number(e.target.value))}
-                        className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2 text-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => setShowFastEditor(false)} className="flex-1 bg-slate-700 py-2 rounded-lg text-sm text-white">Cancel</button>
-                      <button onClick={() => {
-                         setAppData(prev => ({
-                           ...prev,
-                           currentFast: { ...prev.currentFast, startTime: new Date(editStartTime).toISOString(), targetHours: editTargetHours }
-                         }));
-                         setShowFastEditor(false);
-                      }} className="flex-1 bg-blue-600 py-2 rounded-lg text-sm text-white font-semibold">Save</button>
-                    </div>
-                  </div>
-                )}
-
-                <button 
-                  onClick={handleEndFast}
-                  className="w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
-                >
-                  <i className="fas fa-square" style={{fontSize: 18}}></i> End Fast
-                </button>
-              </div>
-            ) : (
-              <div>
-                {!showFastEditor ? (
-                  <div className="flex flex-col gap-3">
-                    <button 
-                      onClick={() => handleStartFast()}
-                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors text-lg shadow-lg shadow-emerald-900/20"
-                    >
-                      <i className="fas fa-play" style={{fontSize: 20}}></i> Start Fasting Now
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setEditStartTime(toDatetimeLocal(new Date()));
-                        setEditTargetHours(getTargetHours(appData.settings.primaryFastingProtocol));
-                        setShowFastEditor(true);
-                      }}
-                      className="text-sm text-slate-400 text-center hover:text-white flex items-center justify-center gap-1 py-2 w-full"
-                    >
-                      <i className="fas fa-clock" style={{fontSize: 14}}></i> Start Retroactively
-                    </button>
+                {active ? (
+                  <div className="text-center space-y-4">
+                     <div className="text-5xl font-bold tracking-tighter font-mono">{formatTime(elapsedMs)}</div>
+                     {currentPhase && (
+                       <button onClick={()=>{setModalPhaseIndex(currentPhaseIdx); setShowPhasesModal(true);}} className={`w-full bg-gradient-to-r ${currentPhase.color} p-4 rounded-2xl flex items-center justify-between shadow-lg active:scale-[0.98] transition-all`}>
+                          <div className="flex items-center gap-4">
+                             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center"><i className={`fas ${currentPhase.icon} text-white`}></i></div>
+                             <div className="text-left"><div className="text-[10px] font-black text-white/50 uppercase leading-none mb-1">Metabolic State</div><div className="text-white font-black text-base">{currentPhase.title}</div></div>
+                          </div>
+                          <div className="flex items-center gap-2 opacity-50"><span className="text-[10px] font-bold">INFO</span><i className="fas fa-chevron-right text-xs"></i></div>
+                       </button>
+                     )}
+                     <div className="h-2.5 bg-slate-900 rounded-full overflow-hidden shadow-inner"><div className={`h-full transition-all duration-1000 ${progress>=100?'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]':'bg-blue-500'}`} style={{width: `${progress}%`}}></div></div>
+                     <button onClick={handleEndFast} className="w-full py-4 bg-red-500/10 text-red-500 rounded-2xl font-bold border border-red-500/20 active:scale-95 transition-all">END FAST</button>
                   </div>
                 ) : (
-                  <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200 bg-slate-900 p-4 rounded-xl border border-slate-700">
-                     <div>
-                       <label className="block text-xs text-slate-400 mb-1">Start Time</label>
-                       <input 
-                         type="datetime-local" 
-                         value={editStartTime}
-                         onChange={e => setEditStartTime(e.target.value)}
-                         className="w-full bg-slate-800 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
-                       />
-                     </div>
-                     <div>
-                       <label className="block text-xs text-slate-400 mb-1">Target Duration (Hours)</label>
-                       <input 
-                         type="number" 
-                         value={editTargetHours}
-                         onChange={e => setEditTargetHours(Number(e.target.value))}
-                         className="w-full bg-slate-800 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
-                       />
-                     </div>
-                     <div className="flex gap-2 pt-2">
-                       <button 
-                         onClick={() => setShowFastEditor(false)}
-                         className="flex-1 bg-slate-700 text-white py-3 rounded-xl"
-                       >
-                         Cancel
-                       </button>
-                       <button 
-                         onClick={() => handleStartFast(editStartTime, editTargetHours)}
-                         className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-semibold"
-                       >
-                         Start
-                       </button>
-                     </div>
+                  <div className="space-y-3">
+                     <button onClick={() => handleStartFast()} className="w-full py-6 bg-emerald-600 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all">START FASTING</button>
+                     <button onClick={() => { setEditStartTime(toDatetimeLocal(new Date())); setShowFastEditor(true); }} className="w-full text-slate-500 text-xs font-bold py-2">START RETROACTIVELY</button>
                   </div>
                 )}
-              </div>
-            )}
-          </div>
-
-          {/* Protein Tracker */}
-          <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
-            <div className="flex justify-between items-end mb-3">
-              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                <i className="fas fa-fire" style={{fontSize: 16}}></i> Protein Goal
-              </h3>
-              <span className="text-2xl font-bold text-white">
-                {todayLog.protein} <span className="text-sm text-slate-400">/ {appData.settings.proteinGoal}g</span>
-              </span>
-            </div>
-            
-            {/* Progress Bar */}
-            <div className="h-4 bg-slate-900 rounded-full overflow-hidden mb-5">
-              <div 
-                className={`h-full transition-all duration-500 ${todayLog.protein >= appData.settings.proteinGoal ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                style={{ width: `${Math.min(100, (todayLog.protein / appData.settings.proteinGoal) * 100)}%` }}
-              />
-            </div>
-
-            {/* Quick Add Buttons */}
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              {appData.settings.quickAdds.map((item, idx) => (
-                <button 
-                  key={idx}
-                  onClick={() => updateTodayLog({ protein: todayLog.protein + item.amount })}
-                  className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white p-3 rounded-xl transition-colors text-sm"
-                >
-                  <i className="fas fa-plus" style={{fontSize: 16}}></i> {item.label} ({item.amount}g)
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-3">
-               <button 
-                onClick={() => updateTodayLog({ protein: todayLog.protein + 10 })}
-                className="flex-1 bg-slate-900 border border-slate-700 text-slate-300 p-2 rounded-lg text-sm"
-              >
-                +10g
-              </button>
-              <button 
-                onClick={() => updateTodayLog({ protein: Math.max(0, todayLog.protein - 10) })}
-                className="flex-1 bg-slate-900 border border-slate-700 text-slate-300 p-2 rounded-lg text-sm"
-              >
-                -10g
-              </button>
-            </div>
-            
-            {/* Manual Protein Edit */}
-            <div className="mt-4 flex items-center gap-2">
-              <label className="text-xs text-slate-400">Manual (g):</label>
-               <input 
-                  type="number" 
-                  value={todayLog.protein ?? ''}
-                  onChange={(e) => handleDailyInput('protein', e.target.value)}
-                  className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-blue-500 text-sm"
-                />
-            </div>
-          </div>
-
-          {/* Daily Macros */}
-          <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
-             <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <i className="fas fa-bullseye" style={{fontSize: 16}}></i> Other Macros
-            </h3>
-            <div className="flex flex-col gap-4">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1 flex justify-between">
-                  <span>Calories</span>
-                  <span>{todayLog.calories || 0} / {appData.settings.calorieGoal} kcal</span>
-                </label>
-                <input 
-                  type="number" 
-                  value={todayLog.calories ?? ''}
-                  onChange={(e) => handleDailyInput('calories', e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
-                  placeholder="e.g. 1500"
-                />
-              </div>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-xs text-slate-400 mb-1 flex justify-between">
-                    <span>Carbs (g)</span>
-                    <span>{todayLog.carbs || 0} / {appData.settings.carbGoal}g</span>
-                  </label>
-                  <input 
-                    type="number" 
-                    value={todayLog.carbs ?? ''}
-                    onChange={(e) => handleDailyInput('carbs', e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500"
-                    placeholder="e.g. 120"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs text-slate-400 mb-1 flex justify-between">
-                    <span>Fat (g)</span>
-                    <span>{todayLog.fat || 0} / {appData.settings.fatGoal}g</span>
-                  </label>
-                  <input 
-                    type="number" 
-                    value={todayLog.fat ?? ''}
-                    onChange={(e) => handleDailyInput('fat', e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-rose-500"
-                    placeholder="e.g. 60"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Supplements */}
-          <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <i className="fas fa-tint" style={{fontSize: 16}}></i> Supplements
-            </h3>
-            <div className="space-y-3">
-              {appData.settings.supplements.map(sup => (
-                <button
-                  key={sup}
-                  onClick={() => updateSupplement(sup)}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-700 text-white"
-                >
-                  <span className="capitalize">{sup}</span>
-                  <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${todayLog.supplements?.[sup] ? 'bg-emerald-500' : 'bg-slate-700'}`}>
-                    {todayLog.supplements?.[sup] && <i className="fas fa-check-circle text-white" style={{fontSize: 16}}></i>}
+                {showFastEditor && (
+                  <div className="mt-4 p-4 bg-slate-900 border border-slate-700 rounded-2xl space-y-4">
+                    <input type="datetime-local" value={editStartTime} onChange={e=>setEditStartTime(e.target.value)} className="w-full bg-slate-800 p-3 rounded-xl outline-none" />
+                    <div className="flex gap-2"><button onClick={()=>setShowFastEditor(false)} className="flex-1 bg-slate-700 py-3 rounded-xl font-bold">CANCEL</button><button onClick={()=>handleStartFast(editStartTime)} className="flex-1 bg-blue-600 py-3 rounded-xl font-bold">START</button></div>
                   </div>
-                </button>
-              ))}
-              {appData.settings.supplements.length === 0 && (
-                 <p className="text-xs text-slate-500 text-center py-2">No supplements configured. Add them in settings.</p>
-              )}
-            </div>
+                )}
+             </div>
+
+             <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-xl space-y-4">
+                <div className="flex justify-between items-end"><div className="text-slate-400 text-xs font-bold uppercase tracking-widest"><i className="fas fa-fire"></i> Protein</div><div className="text-2xl font-bold">{log.protein}<span className="text-slate-600 text-sm">/{appData.settings.proteinGoal}g</span></div></div>
+                <div className="h-2 bg-slate-900 rounded-full overflow-hidden"><div className="h-full bg-emerald-500" style={{width: `${Math.min(100, (log.protein/appData.settings.proteinGoal)*100)}%`}}></div></div>
+                <div className="grid grid-cols-2 gap-3">
+                   {appData.settings.quickAdds.map((item, i) => (<button key={i} onClick={()=>updateTodayLog({protein: log.protein + item.amount})} className="bg-slate-900 py-3 rounded-2xl border border-slate-700 text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all">{item.label} <span className="opacity-40">{item.amount}g</span></button>))}
+                </div>
+                <div className="flex gap-2 pt-2"><button onClick={()=>updateTodayLog({protein: log.protein+10})} className="flex-1 bg-slate-900/50 py-2 rounded-xl text-[10px] font-black uppercase">+10g</button><button onClick={()=>updateTodayLog({protein: Math.max(0, log.protein-10)})} className="flex-1 bg-slate-900/50 py-2 rounded-xl text-[10px] font-black uppercase">-10g</button><input type="number" value={log.protein} onChange={e=>handleDailyInput('protein', e.target.value)} className="w-16 bg-slate-900 border border-slate-700 rounded-xl px-2 text-center text-xs font-bold" /></div>
+             </div>
+
+             <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-xl space-y-4">
+                <div className="text-slate-400 text-xs font-bold uppercase tracking-widest"><i className="fas fa-bullseye"></i> Macros</div>
+                <div className="space-y-4">
+                   <div><div className="flex justify-between text-[10px] font-bold uppercase text-slate-500 mb-1"><span>Calories</span><span>{log.calories}/{appData.settings.calorieGoal}</span></div><input type="number" value={log.calories||''} onChange={e=>handleDailyInput('calories', e.target.value)} placeholder="0" className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm font-bold outline-none focus:border-blue-500" /></div>
+                   <div className="grid grid-cols-2 gap-4">
+                      <div><div className="flex justify-between text-[10px] font-bold uppercase text-slate-500 mb-1"><span>Carbs</span></div><input type="number" value={log.carbs||''} onChange={e=>handleDailyInput('carbs', e.target.value)} placeholder="0" className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm font-bold outline-none focus:border-amber-500" /></div>
+                      <div><div className="flex justify-between text-[10px] font-bold uppercase text-slate-500 mb-1"><span>Fat</span></div><input type="number" value={log.fat||''} onChange={e=>handleDailyInput('fat', e.target.value)} placeholder="0" className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm font-bold outline-none focus:border-rose-500" /></div>
+                   </div>
+                </div>
+             </div>
+
+             <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-xl space-y-4">
+                <div className="text-slate-400 text-xs font-bold uppercase tracking-widest"><i className="fas fa-pills"></i> Supplements</div>
+                <div className="grid grid-cols-1 gap-2">
+                   {appData.settings.supplements.map(s => (
+                     <button key={s} onClick={()=>updateSupplement(s)} className="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-700 active:scale-[0.98] transition-all"><span className="capitalize font-bold text-sm tracking-tight">{s}</span><div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${log.supplements?.[s]?'bg-emerald-500 shadow-lg shadow-emerald-500/40':'bg-slate-800'}`}>{log.supplements?.[s] && <i className="fas fa-check text-[10px]"></i>}</div></button>
+                   ))}
+                </div>
+             </div>
+             {showPhasesModal && <FastingPhasesModal />}
           </div>
-        </div>
-      );
+        );
       };
 
       const renderWeeklyInsights = () => {
-        const past7Days = getPast7Days();
-        const logs = past7Days.map(date => ({
-          date,
-          ...(appData.logs[date] || DEFAULT_LOG_OBJ)
-        }));
-
-        const customFasts = appData.settings.fastingOptions.filter(f => f.toLowerCase() !== 'no fast');
-        
-        const daysWithData = logs.filter(l => l.calories > 0 || l.fat > 0 || l.carbs > 0);
-        const avgCals = daysWithData.length ? Math.round(daysWithData.reduce((acc, l) => acc + l.calories, 0) / daysWithData.length) : 0;
-        const avgFat = daysWithData.length ? Math.round(daysWithData.reduce((acc, l) => acc + l.fat, 0) / daysWithData.length) : 0;
-        const avgCarbs = daysWithData.length ? Math.round(daysWithData.reduce((acc, l) => acc + (l.carbs || 0), 0) / daysWithData.length) : 0;
-
+        const days = getPast7Days(); const logs = days.map(d => appData.logs[d] || DEFAULT_LOG_OBJ);
+        const fasts = logs.flatMap((l, i) => (l.completedFasts || []).map(f => ({...f, date: days[i]})));
+        const avg = (field) => { const items = logs.filter(l => l[field]>0); return items.length ? Math.round(items.reduce((a,c)=>a+c[field],0)/items.length) : 0; };
         return (
-          <div className="space-y-6 pb-safe">
-            <h2 className="text-2xl font-bold text-white mb-4">Weekly Insights</h2>
-
-            {/* Fasting Stats */}
-            {customFasts.length > 0 && (
-              <div className="grid grid-cols-2 gap-4">
-                {customFasts.slice(0, 4).map(fastOption => {
-                   const count = logs.filter(l => l.fasting === fastOption).length;
-                   return (
-                    <div key={fastOption} className="bg-slate-800 rounded-2xl p-5 border border-slate-700 text-center">
-                      <div className="text-3xl font-bold text-blue-400 mb-1">{count}</div>
-                      <div className="text-xs text-slate-400 uppercase tracking-wide truncate">{fastOption}</div>
-                    </div>
-                   )
-                })}
-              </div>
-            )}
-
-            {/* Completed Fasts Log */}
-            <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
-               <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <i className="fas fa-stopwatch" style={{fontSize: 16}}></i> Completed Fasts (Last 7 Days)
-              </h3>
-              <div className="space-y-3">
-                 {logs.flatMap(l => (l.completedFasts || []).map(f => ({ date: l.date, ...f })))
-                   .filter(f => f.durationHours > 0)
-                   .map((fast, idx) => (
-                   <div key={idx} className="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-slate-700">
-                     <span className="text-slate-300">{getDayName(fast.date)}</span>
-                     <span className={`font-bold ${fast.durationHours >= fast.targetHours ? 'text-emerald-400' : 'text-blue-400'}`}>
-                       {fast.durationHours}h <span className="text-xs font-normal text-slate-500">/ {fast.targetHours}h</span>
-                     </span>
-                   </div>
-                 ))}
-                 {logs.flatMap(l => l.completedFasts || []).length === 0 && (
-                   <p className="text-xs text-slate-500 text-center py-2">No completed fasts logged yet.</p>
-                 )}
-              </div>
-            </div>
-
-            {/* Protein Adherence */}
-            <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
-               <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <i className="fas fa-fire" style={{fontSize: 16}}></i> Protein Adherence ({appData.settings.proteinGoal}g)
-              </h3>
-              <div className="flex justify-between">
-                {logs.map((log) => {
-                  const success = log.protein >= appData.settings.proteinGoal;
-                  return (
-                    <div key={log.date} className="flex flex-col items-center gap-2">
-                      <span className="text-xs text-slate-500">{getDayName(log.date)[0]}</span>
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${success ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-900 text-slate-600'}`}>
-                        {success ? <i className="fas fa-check-circle" style={{fontSize: 18}}></i> : <i className="far fa-circle" style={{fontSize: 18}}></i>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Macros Averages */}
-            <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
-              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <i className="fas fa-bullseye" style={{fontSize: 16}}></i> Last 7 Days Averages
-              </h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-300">Calories</span>
-                  <span className="font-bold text-white">{avgCals} <span className="text-sm font-normal text-slate-500">kcal</span></span>
+          <div className="space-y-6 pb-safe-content animate-fade-in-up">
+             <h2 className="text-2xl font-bold">Weekly Insights</h2>
+             <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-xl space-y-4">
+                <div className="text-slate-400 text-xs font-bold uppercase tracking-widest"><i className="fas fa-chart-line"></i> Averages (7D)</div>
+                <div className="grid grid-cols-3 gap-2">
+                   <div className="bg-slate-900 p-4 rounded-2xl text-center"><div className="text-[8px] font-bold text-slate-500 uppercase">Calories</div><div className="text-lg font-bold">{avg('calories')}</div></div>
+                   <div className="bg-slate-900 p-4 rounded-2xl text-center"><div className="text-[8px] font-bold text-slate-500 uppercase">Carbs</div><div className="text-lg font-bold">{avg('carbs')}g</div></div>
+                   <div className="bg-slate-900 p-4 rounded-2xl text-center"><div className="text-[8px] font-bold text-slate-500 uppercase">Fat</div><div className="text-lg font-bold">{avg('fat')}g</div></div>
                 </div>
-                <div className="h-px bg-slate-700 w-full" />
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-300">Carbs</span>
-                  <span className="font-bold text-white">{avgCarbs} <span className="text-sm font-normal text-slate-500">g</span></span>
+             </div>
+             <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-xl space-y-4">
+                <div className="text-slate-400 text-xs font-bold uppercase tracking-widest"><i className="fas fa-history"></i> Recent Fasts</div>
+                <div className="space-y-2">
+                   {fasts.slice(-5).reverse().map((f, i) => (<div key={i} className="flex justify-between items-center bg-slate-900 p-4 rounded-2xl"><span className="text-xs text-slate-500">{getDayName(f.date)}</span><span className={`font-bold ${f.durationHours>=f.targetHours?'text-emerald-400':'text-blue-400'}`}>{f.durationHours}h / {f.targetHours}h</span></div>))}
+                   {fasts.length === 0 && <p className="text-center text-xs text-slate-600 py-4 italic">No fasts recorded yet.</p>}
                 </div>
-                <div className="h-px bg-slate-700 w-full" />
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-300">Fat</span>
-                  <span className="font-bold text-white">{avgFat} <span className="text-sm font-normal text-slate-500">g</span></span>
-                </div>
-              </div>
-            </div>
+             </div>
           </div>
         );
       };
 
       const renderProgress = () => {
-        const totalLossGoal = appData.startWeight - appData.targetWeight;
-        const currentLoss = appData.startWeight - appData.currentWeight;
-        const progressPercent = Math.max(0, Math.min(100, (currentLoss / totalLossGoal) * 100));
-
-        const startDateObj = new Date(appData.startDate);
-        const todayObj = new Date(today);
-        const diffTime = Math.abs(todayObj - startDateObj);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        const currentWeek = Math.min(12, Math.floor(diffDays / 7) + 1);
-
-        return (
-          <div className="space-y-6 pb-safe">
-            <h2 className="text-2xl font-bold text-white mb-4">Progress</h2>
-
-            {/* Week Counter */}
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-5 text-center">
-              <div className="text-sm font-semibold text-blue-400 uppercase tracking-wider mb-1">Current Week</div>
-              <div className="text-4xl font-bold text-white">Week {currentWeek} <span className="text-xl text-slate-400">/ 12</span></div>
-            </div>
-
-            {/* Weight Tracker */}
-            <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
-               <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <i className="fas fa-arrow-trend-down" style={{fontSize: 16}}></i> Weight Journey
-              </h3>
-              
-              <div className="flex items-center justify-between mb-6">
-                <div className="text-center">
-                  <div className="text-slate-500 text-xs mb-1">Start</div>
-                  <div className="text-xl font-bold text-slate-300">{appData.startWeight}</div>
-                </div>
-                <div className="flex-1 px-4">
-                   <div className="h-2 bg-slate-900 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-emerald-500 transition-all duration-1000"
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-slate-500 text-xs mb-1">Goal</div>
-                  <div className="text-xl font-bold text-emerald-400">{appData.targetWeight}</div>
-                </div>
+         const w = appData.startWeight; const cur = appData.currentWeight || w; const target = appData.targetWeight;
+         const perc = Math.max(0, Math.min(100, ((w - cur)/(w - target))*100));
+         return (
+           <div className="space-y-6 pb-safe-content animate-fade-in-up">
+              <h2 className="text-2xl font-bold">Progress</h2>
+              <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-xl space-y-6">
+                 <div className="text-center"><div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Total Progress</div><div className="text-5xl font-bold tracking-tighter">{Math.round(perc)}%</div></div>
+                 <div className="flex justify-between items-center px-2">
+                    <div className="text-center"><div className="text-[10px] text-slate-500 font-bold uppercase">Start</div><div className="text-lg font-bold text-slate-400">{w}</div></div>
+                    <div className="flex-1 h-2 bg-slate-900 mx-4 rounded-full overflow-hidden"><div className="h-full bg-emerald-500" style={{width:`${perc}%`}}></div></div>
+                    <div className="text-center"><div className="text-[10px] text-slate-500 font-bold uppercase">Goal</div><div className="text-lg font-bold text-emerald-500">{target}</div></div>
+                 </div>
+                 <div className="bg-slate-900 p-4 rounded-2xl flex justify-between items-center"><span className="text-sm text-slate-400 font-bold">Current Weight</span><input type="number" step="0.1" value={appData.currentWeight||''} onChange={e=>setAppData({...appData, currentWeight: Number(e.target.value)})} className="bg-slate-800 w-24 text-right p-2 rounded-xl outline-none font-bold" /></div>
               </div>
-
-              <div className="bg-slate-900 p-4 rounded-xl flex items-center justify-between">
-                <span className="text-slate-300">Current Weight (kg)</span>
-                <input 
-                  type="number" 
-                  step="0.1"
-                  value={appData.currentWeight ?? ''}
-                  onChange={(e) => {
-                      const num = parseFloat(e.target.value);
-                      setAppData({...appData, currentWeight: isNaN(num) ? '' : num});
-                  }}
-                  className="bg-slate-800 border border-slate-600 rounded-lg p-2 text-white text-right w-24 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-        );
+           </div>
+         );
       };
 
       const renderSettings = () => (
-        <div className="space-y-6 pb-safe">
-          <h2 className="text-2xl font-bold text-white mb-4">Settings</h2>
-
-          {/* Daily Goals */}
-          <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Daily Goals</h3>
-            <p className="text-xs text-slate-500 mb-4">Values set here are independent and will not auto-calculate.</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Protein (g)</label>
-                <input 
-                  type="number" 
-                  value={appData.settings.proteinGoal ?? ''}
-                  onChange={(e) => handleSettingInput('proteinGoal', e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-emerald-500"
-                />
+        <div className="space-y-6 pb-safe-content animate-fade-in-up no-scrollbar">
+           <h2 className="text-2xl font-bold">Setup</h2>
+           <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-xl space-y-4">
+              <div className="text-slate-400 text-xs font-bold uppercase tracking-widest">Daily Targets</div>
+              <div className="grid grid-cols-2 gap-4">
+                 <div><label className="text-[10px] text-slate-500 font-bold uppercase">Protein</label><input type="number" value={appData.settings.proteinGoal} onChange={e=>handleSettingInput('proteinGoal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl font-bold" /></div>
+                 <div><label className="text-[10px] text-slate-500 font-bold uppercase">Calories</label><input type="number" value={appData.settings.calorieGoal} onChange={e=>handleSettingInput('calorieGoal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl font-bold" /></div>
+                 <div><label className="text-[10px] text-slate-500 font-bold uppercase">Carbs</label><input type="number" value={appData.settings.carbGoal} onChange={e=>handleSettingInput('carbGoal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl font-bold" /></div>
+                 <div><label className="text-[10px] text-slate-500 font-bold uppercase">Fat</label><input type="number" value={appData.settings.fatGoal} onChange={e=>handleSettingInput('fatGoal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl font-bold" /></div>
               </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Calories (kcal)</label>
-                <input 
-                  type="number" 
-                  value={appData.settings.calorieGoal ?? ''}
-                  onChange={(e) => handleSettingInput('calorieGoal', e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Carbs (g)</label>
-                <input 
-                  type="number" 
-                  value={appData.settings.carbGoal ?? ''}
-                  onChange={(e) => handleSettingInput('carbGoal', e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Fat (g)</label>
-                <input 
-                  type="number" 
-                  value={appData.settings.fatGoal ?? ''}
-                  onChange={(e) => handleSettingInput('fatGoal', e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-rose-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Add Buttons Configuration */}
-          <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Quick Add Buttons</h3>
-            <div className="space-y-3 mb-4">
-              {appData.settings.quickAdds.map((item, idx) => (
-                 <div key={idx} className="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-slate-700">
-                   <span className="text-slate-300">{item.label} <span className="text-slate-500 text-sm">({item.amount}g)</span></span>
-                   <button 
-                    onClick={() => updateSettings({ quickAdds: appData.settings.quickAdds.filter((_, i) => i !== idx) })}
-                    className="text-red-400 p-1 hover:bg-red-400/10 rounded-lg"
-                   >
-                     <i className="fas fa-times" style={{fontSize: 16}}></i>
-                   </button>
-                 </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input 
-                placeholder="Name (e.g. Whey)" 
-                value={newQuickLabel}
-                onChange={e => setNewQuickLabel(e.target.value)}
-                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-sm"
-              />
-              <input 
-                type="number"
-                placeholder="Amount" 
-                value={newQuickAmount}
-                onChange={e => setNewQuickAmount(e.target.value)}
-                className="w-20 bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-sm"
-              />
-              <button 
-                onClick={() => {
-                  if (newQuickLabel && newQuickAmount) {
-                    updateSettings({ quickAdds: [...appData.settings.quickAdds, { label: newQuickLabel, amount: parseInt(newQuickAmount) }] });
-                    setNewQuickLabel('');
-                    setNewQuickAmount('');
-                  }
-                }}
-                className="bg-blue-600 text-white rounded-lg p-2 px-3 text-sm font-medium"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-
-          {/* Fasting Options */}
-          <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Fasting Protocols</h3>
-            <div className="space-y-3 mb-4">
-              {appData.settings.fastingOptions.map((opt, idx) => (
-                 <div key={idx} className="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-slate-700">
-                   <span className="text-slate-300">{opt}</span>
-                   <button 
-                    onClick={() => updateSettings({ fastingOptions: appData.settings.fastingOptions.filter((_, i) => i !== idx) })}
-                    className="text-red-400 p-1 hover:bg-red-400/10 rounded-lg"
-                   >
-                     <i className="fas fa-times" style={{fontSize: 16}}></i>
-                   </button>
-                 </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input 
-                placeholder="e.g. 16 Hours" 
-                value={newFasting}
-                onChange={e => setNewFasting(e.target.value)}
-                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-sm"
-              />
-              <button 
-                onClick={() => {
-                  if (newFasting) {
-                    updateSettings({ fastingOptions: [...appData.settings.fastingOptions, newFasting] });
-                    setNewFasting('');
-                  }
-                }}
-                className="bg-blue-600 text-white rounded-lg p-2 px-3 text-sm font-medium"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-
-          {/* Supplements */}
-          <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Daily Supplements</h3>
-            <div className="space-y-3 mb-4">
-              {appData.settings.supplements.map((sup, idx) => (
-                 <div key={idx} className="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-slate-700">
-                   <span className="text-slate-300 capitalize">{sup}</span>
-                   <button 
-                    onClick={() => updateSettings({ supplements: appData.settings.supplements.filter((_, i) => i !== idx) })}
-                    className="text-red-400 p-1 hover:bg-red-400/10 rounded-lg"
-                   >
-                     <i className="fas fa-times" style={{fontSize: 16}}></i>
-                   </button>
-                 </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input 
-                placeholder="e.g. Omega 3" 
-                value={newSup}
-                onChange={e => setNewSup(e.target.value)}
-                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-sm"
-              />
-              <button 
-                onClick={() => {
-                  if (newSup) {
-                    updateSettings({ supplements: [...appData.settings.supplements, newSup.toLowerCase()] });
-                    setNewSup('');
-                  }
-                }}
-                className="bg-blue-600 text-white rounded-lg p-2 px-3 text-sm font-medium"
-              >
-                Add
-              </button>
-            </div>
-          </div>
+           </div>
+           <button onClick={() => { if(confirm("Reset everything?")) localStorage.removeItem('cutTrackerData'), location.reload(); }} className="w-full py-4 text-red-500/50 font-bold text-xs uppercase tracking-widest">Clear All Data</button>
         </div>
       );
 
-      if (!appData.wizardCompleted) {
-        return renderWizard();
-      }
+      if (!appData.wizardCompleted) return renderWizard();
 
       return (
-        <div className="h-full bg-slate-950 font-sans text-slate-100 flex justify-center no-scrollbar">
-          <div className="w-full max-w-md bg-slate-950 h-full relative shadow-2xl flex flex-col">
-            
-            {/* Header */}
-            <header className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/80 backdrop-blur-md sticky top-0 z-10">
-              <div>
-                <h1 className="font-bold text-xl text-white">Cut & Fast</h1>
-                <p className="text-xs text-slate-400">{new Date(today).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                <i className="fas fa-bullseye text-emerald-500" style={{fontSize: 20}}></i>
-              </div>
-            </header>
-
-            {/* Main Content */}
-            <main className="flex-1 p-4 overflow-y-auto no-scrollbar">
-              {activeTab === 'daily' && renderDailyFocus()}
-              {activeTab === 'weekly' && renderWeeklyInsights()}
-              {activeTab === 'progress' && renderProgress()}
-              {activeTab === 'settings' && renderSettings()}
-            </main>
-
-            {/* Bottom Navigation */}
-            <nav className="fixed bottom-0 w-full max-w-md bg-slate-900 border-t border-slate-800 flex justify-around p-3 pb-safe z-20">
-              <NavBtn iconClass="fas fa-home" label="Daily" active={activeTab === 'daily'} onClick={() => setActiveTab('daily')} />
-              <NavBtn iconClass="fas fa-chart-bar" label="Insights" active={activeTab === 'weekly'} onClick={() => setActiveTab('weekly')} />
-              <NavBtn iconClass="fas fa-arrow-trend-down" label="Progress" active={activeTab === 'progress'} onClick={() => setActiveTab('progress')} />
-              <NavBtn iconClass="fas fa-cog" label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
-            </nav>
-          </div>
+        <div className="h-full bg-slate-950 flex flex-col no-scrollbar">
+          <header className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/80 backdrop-blur-md sticky top-0 z-10 pt-safe">
+            <div><h1 className="font-bold text-xl tracking-tight">Cut & Fast</h1><p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{new Date(today).toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</p></div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shadow-inner"><i className="fas fa-bolt text-emerald-500"></i></div>
+          </header>
+          <main className="flex-1 p-4 overflow-y-auto no-scrollbar">
+            {activeTab === 'daily' && renderDailyFocus()}
+            {activeTab === 'weekly' && renderWeeklyInsights()}
+            {activeTab === 'progress' && renderProgress()}
+            {activeTab === 'settings' && renderSettings()}
+          </main>
+          <nav className="fixed bottom-0 w-full bg-slate-900/90 backdrop-blur-xl border-t border-slate-800 flex justify-around p-3 pb-safe z-20">
+            <NavBtn ic="fa-house" label="Daily" act={activeTab==='daily'} onClick={()=>setActiveTab('daily')} />
+            <NavBtn ic="fa-chart-pie" label="Stats" act={activeTab==='weekly'} onClick={()=>setActiveTab('weekly')} />
+            <NavBtn ic="fa-bullseye" label="Goal" act={activeTab==='progress'} onClick={()=>setActiveTab('progress')} />
+            <NavBtn ic="fa-sliders" label="Setup" act={activeTab==='settings'} onClick={()=>setActiveTab('settings')} />
+          </nav>
         </div>
       );
     }
 
-    const NavBtn = ({ iconClass, label, active, onClick }) => (
-      <button 
-        onClick={onClick}
-        className={`flex flex-col items-center justify-center w-[18%] py-2 gap-1 rounded-xl transition-colors ${
-          active ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'
-        }`}
-      >
-        <i className={`${iconClass} ${active ? 'text-xl' : 'text-lg'}`}></i>
-        <span className="text-[10px] font-medium mt-1">{label}</span>
-      </button>
+    const NavBtn = ({ ic, label, act, onClick }) => (
+      <button onClick={onClick} className={`flex flex-col items-center gap-1 w-16 transition-all ${act?'text-emerald-400 scale-110':'text-slate-500 opacity-60'}`}><i className={`fas ${ic} text-lg`}></i><span className="text-[8px] font-bold uppercase tracking-tighter">{label}</span></button>
     );
+
+    const formatTime = (ms) => {
+      const s = Math.floor(ms / 1000); const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); const ss = s % 60;
+      return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${ss.toString().padStart(2,'0')}`;
+    };
+
+    const updateSupplement = (key) => { /* logic inside App component if needed */ };
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
