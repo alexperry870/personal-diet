@@ -47,6 +47,13 @@
       backdrop-filter: blur(4px);
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
+
+    /* Prevent body scroll when overlay is open */
+    .overflow-hidden-fixed {
+      overflow: hidden !important;
+      position: fixed;
+      width: 100%;
+    }
   </style>
 </head>
 <body class="text-slate-100 font-sans antialiased">
@@ -57,7 +64,7 @@
 
     const FASTING_PHASES = [
       {
-        min: 0, max: 3, title: "Feeding Phase", icon: "fa-utensils", color: "from-blue-500 to-indigo-600",
+        min: 0, max: 3, title: "Feeding Phase", icon: "fa-utensils", color: "from-blue-600 to-indigo-700",
         short: "Absorbing nutrients and storing energy.",
         description: "Right after a meal, your body is busy processing incoming food. It's in 'Anabolic' (building) mode.",
         details: [
@@ -68,7 +75,7 @@
         whatToExpect: "You likely feel satiated and energetic. This is when your body refuels for the fast ahead."
       },
       {
-        min: 3, max: 12, title: "Post-Absorptive", icon: "fa-clock", color: "from-blue-400 to-cyan-500",
+        min: 3, max: 12, title: "Post-Absorptive", icon: "fa-clock", color: "from-blue-500 to-cyan-600",
         short: "Shifting from food to stored energy.",
         description: "Your digestive system takes a well-deserved break. The body begins to look inward for fuel.",
         details: [
@@ -79,7 +86,7 @@
         whatToExpect: "Initial hunger waves might appear as your blood sugar stabilizes. Drink water and stay busy."
       },
       {
-        min: 12, max: 18, title: "Early Catabolic", icon: "fa-fire-alt", color: "from-orange-400 to-red-500",
+        min: 12, max: 18, title: "Early Catabolic", icon: "fa-fire-alt", color: "from-orange-500 to-red-600",
         short: "Unlocking your fat stores.",
         description: "Liver glycogen is running low. Your body starts breaking down fat into fatty acids for energy.",
         details: [
@@ -90,7 +97,7 @@
         whatToExpect: "Mental clarity often increases. You might feel a 'second wind' of energy as hunger fades."
       },
       {
-        min: 18, max: 24, title: "Metabolic Switch", icon: "fa-bolt", color: "from-amber-400 to-orange-500",
+        min: 18, max: 24, title: "Metabolic Switch", icon: "fa-bolt", color: "from-amber-500 to-orange-600",
         short: "Fat is now your primary fuel.",
         description: "The 'Switch' is complete. You are now primarily burning fat and ketones, mimicking a ketogenic state.",
         details: [
@@ -101,7 +108,7 @@
         whatToExpect: "Hunger levels usually drop significantly. Many report a 'flow state' and high productivity."
       },
       {
-        min: 24, max: 48, title: "Deep Autophagy", icon: "fa-recycle", color: "from-emerald-400 to-teal-500",
+        min: 24, max: 48, title: "Deep Autophagy", icon: "fa-recycle", color: "from-emerald-500 to-teal-600",
         short: "Peak cellular cleanup and repair.",
         description: "Your cells are in deep self-cleaning mode. This is often called the 'Spring Cleaning' of the body.",
         details: [
@@ -112,7 +119,7 @@
         whatToExpect: "You feel light and focused. Ensure you are getting enough electrolytes (salt, magnesium) during this stage."
       },
       {
-        min: 48, max: 999, title: "Immune Reset", icon: "fa-shield-halved", color: "from-purple-500 to-indigo-600",
+        min: 48, max: 999, title: "Immune Reset", icon: "fa-shield-halved", color: "from-purple-600 to-indigo-700",
         short: "Deep ketosis and system regeneration.",
         description: "Extended fasting triggers the regeneration of immune cells and maximizes fat adaptation.",
         details: [
@@ -320,61 +327,102 @@
         </div>
       );
 
-      const FastingPhasesModal = () => {
+      const FastingPhasesOverlay = () => {
         const phase = FASTING_PHASES[modalPhaseIndex];
+        
+        // Handle physical scroll locking
+        useEffect(() => {
+          document.body.classList.add('overflow-hidden-fixed');
+          return () => document.body.classList.remove('overflow-hidden-fixed');
+        }, []);
+
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-300">
-            <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-md overflow-hidden relative shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col max-h-[90vh]">
-              {/* Header */}
-              <div className={`p-10 text-center bg-gradient-to-br ${phase.color} relative overflow-hidden`}>
-                <div className="absolute top-0 right-0 p-8 opacity-10"><i className={`fas ${phase.icon} text-9xl`}></i></div>
-                <button onClick={() => setShowPhasesModal(false)} className="absolute top-6 right-6 text-white/70 bg-black/20 w-10 h-10 flex items-center justify-center rounded-full hover:bg-black/40 transition-all"><i className="fas fa-times"></i></button>
-                <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-white/30 backdrop-blur-lg shadow-xl">
-                  <i className={`fas ${phase.icon} text-white text-4xl`}></i>
+          <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col animate-in fade-in slide-in-from-bottom duration-300">
+            {/* Sticky Header */}
+            <div className={`shrink-0 px-6 py-4 flex items-center justify-between border-b border-white/10 bg-gradient-to-r ${phase.color}`}>
+              <div className="flex items-center gap-3">
+                <i className={`fas ${phase.icon} text-white text-xl`}></i>
+                <h3 className="font-black text-white tracking-tight">Stage {modalPhaseIndex + 1}: {phase.title}</h3>
+              </div>
+              <button 
+                onClick={() => setShowPhasesModal(false)}
+                className="w-10 h-10 flex items-center justify-center bg-black/20 rounded-full text-white active:scale-90 transition-all"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-8 no-scrollbar space-y-10">
+              {/* Headline */}
+              <div className="text-center space-y-4">
+                <div className="phase-badge inline-block px-4 py-1.5 rounded-full text-[10px] font-black text-white uppercase tracking-[0.2em]">
+                  {phase.min}{phase.max === 999 ? '+' : `-${phase.max}`} Hours In
                 </div>
-                <h3 className="text-3xl font-black text-white tracking-tight mb-2">{phase.title}</h3>
-                <div className="phase-badge inline-block px-4 py-1.5 rounded-full text-xs font-bold text-white/90 uppercase tracking-widest">
-                  {phase.min}{phase.max === 999 ? '+' : `-${phase.max}`} Hours
-                </div>
+                <p className="text-slate-200 text-2xl font-bold leading-tight px-2">{phase.short}</p>
+                <p className="text-slate-400 text-sm leading-relaxed">{phase.description}</p>
               </div>
 
-              {/* Content */}
-              <div className="p-6 overflow-y-auto no-scrollbar flex-1">
-                <div className="mb-8">
-                  <p className="text-slate-300 text-lg font-medium leading-relaxed italic text-center px-2">"{phase.short}"</p>
-                  <p className="text-slate-400 text-sm mt-4 leading-relaxed text-center">{phase.description}</p>
+              {/* Markers Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <div className="h-px flex-1 bg-slate-800"></div>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Internal Shifts</span>
+                  <div className="h-px flex-1 bg-slate-800"></div>
                 </div>
-
-                <div className="space-y-4 mb-8">
-                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-2">Metabolic Markers</h4>
-                  {phase.details.map((item, i) => (
-                    <div key={i} className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700/50 flex gap-4">
-                      <div className="w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-transparent"></div>
-                      <div>
-                        <div className="flex justify-between items-baseline mb-1">
-                          <span className="text-xs font-bold text-slate-300">{item.label}</span>
-                          <span className="text-[10px] font-black text-blue-400 uppercase">{item.val}</span>
-                        </div>
-                        <p className="text-xs text-slate-400 leading-normal">{item.text}</p>
+                
+                {phase.details.map((item, i) => (
+                  <div key={i} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex gap-5 items-start">
+                    <div className={`w-1 h-12 rounded-full bg-gradient-to-b ${phase.color} opacity-50`}></div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-black text-slate-300 uppercase tracking-wide">{item.label}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/5 text-blue-400 border border-blue-500/20">{item.val}</span>
                       </div>
+                      <p className="text-xs text-slate-500 leading-relaxed">{item.text}</p>
                     </div>
-                  ))}
-                </div>
-
-                <div className="bg-emerald-500/5 border border-emerald-500/10 p-5 rounded-3xl">
-                  <h4 className="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-2">
-                    <i className="fas fa-lightbulb"></i> What You Feel
-                  </h4>
-                  <p className="text-xs text-slate-300 leading-relaxed italic">{phase.whatToExpect}</p>
-                </div>
+                  </div>
+                ))}
               </div>
 
-              {/* Nav */}
-              <div className="p-6 border-t border-slate-800 flex justify-between items-center bg-slate-900/50">
-                <button disabled={modalPhaseIndex === 0} onClick={() => setModalPhaseIndex(m => m - 1)} className="w-12 h-12 flex items-center justify-center text-slate-500 disabled:opacity-0 active:scale-90 transition-all"><i className="fas fa-chevron-left text-xl"></i></button>
-                <div className="flex gap-2">{FASTING_PHASES.map((_, i) => <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === modalPhaseIndex ? 'w-8 bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'w-1.5 bg-slate-700'}`}></div>)}</div>
-                <button disabled={modalPhaseIndex === FASTING_PHASES.length - 1} onClick={() => setModalPhaseIndex(m => m + 1)} className="w-12 h-12 flex items-center justify-center text-slate-500 disabled:opacity-0 active:scale-90 transition-all"><i className="fas fa-chevron-right text-xl"></i></button>
+              {/* Tip Box */}
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-[2rem] p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <i className="fas fa-lightbulb text-4xl text-emerald-400"></i>
+                </div>
+                <h4 className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <i className="fas fa-sparkles"></i> Experience Note
+                </h4>
+                <p className="text-sm text-slate-300 leading-relaxed font-medium">{phase.whatToExpect}</p>
               </div>
+
+              {/* Spacer for Bottom Nav */}
+              <div className="h-24"></div>
+            </div>
+
+            {/* Bottom Nav Controls */}
+            <div className="shrink-0 p-6 bg-slate-900 border-t border-slate-800 flex items-center justify-between pb-[calc(1.5rem+var(--sab))]">
+              <button 
+                disabled={modalPhaseIndex === 0}
+                onClick={() => setModalPhaseIndex(m => m - 1)}
+                className="flex items-center gap-2 text-sm font-bold text-slate-400 disabled:opacity-0 active:scale-95 transition-all"
+              >
+                <i className="fas fa-chevron-left"></i> Previous
+              </button>
+              
+              <div className="flex gap-2">
+                {FASTING_PHASES.map((_, i) => (
+                  <div key={i} className={`h-1 rounded-full transition-all duration-300 ${i === modalPhaseIndex ? 'w-6 bg-emerald-500' : 'w-1.5 bg-slate-800'}`}></div>
+                ))}
+              </div>
+
+              <button 
+                disabled={modalPhaseIndex === FASTING_PHASES.length - 1}
+                onClick={() => setModalPhaseIndex(m => m + 1)}
+                className="flex items-center gap-2 text-sm font-bold text-emerald-400 disabled:opacity-0 active:scale-95 transition-all"
+              >
+                Next <i className="fas fa-chevron-right"></i>
+              </button>
             </div>
           </div>
         );
@@ -456,7 +504,7 @@
                    ))}
                 </div>
              </div>
-             {showPhasesModal && <FastingPhasesModal />}
+             {showPhasesModal && <FastingPhasesOverlay />}
           </div>
         );
       };
@@ -555,7 +603,7 @@
       return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${ss.toString().padStart(2,'0')}`;
     };
 
-    const updateSupplement = (key) => { /* logic inside App component if needed */ };
+    const updateSupplement = (key) => { /* logic inside App component */ };
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
