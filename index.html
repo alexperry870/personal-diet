@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Cut & Fast Tracker</title>
   
   <!-- Tailwind CSS -->
@@ -19,14 +19,27 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
   <style>
-    .pb-safe { padding-bottom: env(safe-area-inset-bottom, 1rem); }
+    :root {
+      --sat: env(safe-area-inset-top);
+      --sar: env(safe-area-inset-right);
+      --sab: env(safe-area-inset-bottom);
+      --sal: env(safe-area-inset-left);
+    }
+    .pb-safe { padding-bottom: calc(var(--sab) + 4rem); }
     /* Hide scrollbars for a cleaner app feel */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* Ensure the app takes full height correctly on mobile */
+    html, body, #root {
+      height: 100%;
+      height: -webkit-fill-available;
+      overflow: hidden;
+    }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans antialiased overflow-hidden">
-  <div id="root" class="h-screen w-screen overflow-hidden"></div>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased">
+  <div id="root"></div>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
@@ -521,7 +534,7 @@
         const remainingMs = targetMs - elapsedMs;
 
         return (
-        <div className="space-y-6 pb-24">
+        <div className="space-y-6 pb-safe">
           <h2 className="text-2xl font-bold text-white mb-4">Daily Focus</h2>
 
           {/* Fasting Timer Card */}
@@ -532,15 +545,27 @@
               <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                 <i className="fas fa-stopwatch" style={{fontSize: 16}}></i> Fasting Timer
               </h3>
-              {active && (
-                <button onClick={() => {
-                  setEditStartTime(toDatetimeLocal(new Date(fast.startTime)));
-                  setEditTargetHours(fast.targetHours);
-                  setShowFastEditor(!showFastEditor);
-                }} className="text-slate-400 hover:text-white p-1">
-                  <i className="fas fa-edit" style={{fontSize: 16}}></i>
-                </button>
-              )}
+              <div className="flex items-center gap-3">
+                {active && (
+                  <button onClick={() => {
+                    setEditStartTime(toDatetimeLocal(new Date(fast.startTime)));
+                    setEditTargetHours(fast.targetHours);
+                    setShowFastEditor(!showFastEditor);
+                  }} className="text-slate-400 hover:text-white p-1">
+                    <i className="fas fa-edit" style={{fontSize: 16}}></i>
+                  </button>
+                )}
+                {/* Protocol Select Integrated into Card */}
+                <select 
+                  value={todayLog.fasting} 
+                  onChange={(e) => updateTodayLog({ fasting: e.target.value })}
+                  className="bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded-lg px-2 py-1 outline-none focus:border-emerald-500"
+                >
+                  {appData.settings.fastingOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {active ? (
@@ -664,29 +689,6 @@
                 )}
               </div>
             )}
-          </div>
-
-          {/* Fasting Protocol Label */}
-          <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <i className="fas fa-wave-square" style={{fontSize: 16}}></i> Protocol Log
-            </h3>
-            <div className="flex flex-col gap-3">
-              {appData.settings.fastingOptions.map(option => (
-                <button
-                  key={option}
-                  onClick={() => updateTodayLog({ fasting: option })}
-                  className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                    todayLog.fasting === option 
-                      ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' 
-                      : 'bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500'
-                  }`}
-                >
-                  <span className="font-medium">{option}</span>
-                  {todayLog.fasting === option ? <i className="fas fa-check-circle" style={{fontSize: 20}}></i> : <i className="far fa-circle" style={{fontSize: 20}}></i>}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Protein Tracker */}
@@ -839,7 +841,7 @@
         const avgCarbs = daysWithData.length ? Math.round(daysWithData.reduce((acc, l) => acc + (l.carbs || 0), 0) / daysWithData.length) : 0;
 
         return (
-          <div className="space-y-6 pb-24">
+          <div className="space-y-6 pb-safe">
             <h2 className="text-2xl font-bold text-white mb-4">Weekly Insights</h2>
 
             {/* Fasting Stats */}
@@ -937,7 +939,7 @@
         const currentWeek = Math.min(12, Math.floor(diffDays / 7) + 1);
 
         return (
-          <div className="space-y-6 pb-24">
+          <div className="space-y-6 pb-safe">
             <h2 className="text-2xl font-bold text-white mb-4">Progress</h2>
 
             {/* Week Counter */}
@@ -990,7 +992,7 @@
       };
 
       const renderSettings = () => (
-        <div className="space-y-6 pb-24">
+        <div className="space-y-6 pb-safe">
           <h2 className="text-2xl font-bold text-white mb-4">Settings</h2>
 
           {/* Daily Goals */}
