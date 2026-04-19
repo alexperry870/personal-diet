@@ -4,20 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Cut & Fast Tracker</title>
-  
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
+
   <!-- FontAwesome for Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  
+
   <!-- React & ReactDOM -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  
+
   <!-- Babel for JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  
+
   <style>
     :root {
       --sat: env(safe-area-inset-top);
@@ -28,7 +28,7 @@
     .pb-safe-content { padding-bottom: calc(var(--sab) + 6rem); }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    
+
     html, body, #root {
       height: 100%;
       height: -webkit-fill-available;
@@ -41,18 +41,11 @@
       to { opacity: 1; transform: translateY(0); }
     }
     .animate-fade-in-up { animation: fade-in-up 0.3s ease-out forwards; }
-    
+
     .phase-badge {
       background: rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(4px);
       border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    /* Prevent body scroll when overlay is open */
-    .overflow-hidden-fixed {
-      overflow: hidden !important;
-      position: fixed;
-      width: 100%;
     }
   </style>
 </head>
@@ -64,7 +57,7 @@
 
     const FASTING_PHASES = [
       {
-        min: 0, max: 3, title: "Feeding Phase", icon: "fa-utensils", color: "from-blue-600 to-indigo-700",
+        min: 0, max: 3, title: "Feeding Phase", icon: "fa-utensils", color: "from-blue-500 to-indigo-600",
         short: "Absorbing nutrients and storing energy.",
         description: "Right after a meal, your body is busy processing incoming food. It's in 'Anabolic' (building) mode.",
         details: [
@@ -75,7 +68,7 @@
         whatToExpect: "You likely feel satiated and energetic. This is when your body refuels for the fast ahead."
       },
       {
-        min: 3, max: 12, title: "Post-Absorptive", icon: "fa-clock", color: "from-blue-500 to-cyan-600",
+        min: 3, max: 12, title: "Post-Absorptive", icon: "fa-clock", color: "from-blue-400 to-cyan-500",
         short: "Shifting from food to stored energy.",
         description: "Your digestive system takes a well-deserved break. The body begins to look inward for fuel.",
         details: [
@@ -86,7 +79,7 @@
         whatToExpect: "Initial hunger waves might appear as your blood sugar stabilizes. Drink water and stay busy."
       },
       {
-        min: 12, max: 18, title: "Early Catabolic", icon: "fa-fire-alt", color: "from-orange-500 to-red-600",
+        min: 12, max: 18, title: "Early Catabolic", icon: "fa-fire-alt", color: "from-orange-400 to-red-500",
         short: "Unlocking your fat stores.",
         description: "Liver glycogen is running low. Your body starts breaking down fat into fatty acids for energy.",
         details: [
@@ -97,7 +90,7 @@
         whatToExpect: "Mental clarity often increases. You might feel a 'second wind' of energy as hunger fades."
       },
       {
-        min: 18, max: 24, title: "Metabolic Switch", icon: "fa-bolt", color: "from-amber-500 to-orange-600",
+        min: 18, max: 24, title: "Metabolic Switch", icon: "fa-bolt", color: "from-amber-400 to-orange-500",
         short: "Fat is now your primary fuel.",
         description: "The 'Switch' is complete. You are now primarily burning fat and ketones, mimicking a ketogenic state.",
         details: [
@@ -108,7 +101,7 @@
         whatToExpect: "Hunger levels usually drop significantly. Many report a 'flow state' and high productivity."
       },
       {
-        min: 24, max: 48, title: "Deep Autophagy", icon: "fa-recycle", color: "from-emerald-500 to-teal-600",
+        min: 24, max: 48, title: "Deep Autophagy", icon: "fa-recycle", color: "from-emerald-400 to-teal-500",
         short: "Peak cellular cleanup and repair.",
         description: "Your cells are in deep self-cleaning mode. This is often called the 'Spring Cleaning' of the body.",
         details: [
@@ -119,7 +112,7 @@
         whatToExpect: "You feel light and focused. Ensure you are getting enough electrolytes (salt, magnesium) during this stage."
       },
       {
-        min: 48, max: 999, title: "Immune Reset", icon: "fa-shield-halved", color: "from-purple-600 to-indigo-700",
+        min: 48, max: 999, title: "Immune Reset", icon: "fa-shield-halved", color: "from-purple-500 to-indigo-600",
         short: "Deep ketosis and system regeneration.",
         description: "Extended fasting triggers the regeneration of immune cells and maximizes fat adaptation.",
         details: [
@@ -166,18 +159,36 @@
     function App() {
       const [activeTab, setActiveTab] = useState('daily');
       const [now, setNow] = useState(Date.now());
-      
+
       const [wizardStep, setWizardStep] = useState(1);
       const [wizardWarning, setWizardWarning] = useState('');
       const [wizardError, setWizardError] = useState('');
       const [wizardData, setWizardData] = useState({
-        gender: 'male', currentWeight: 82, targetWeight: 72, proteinGoal: 160, calorieGoal: 2000, carbGoal: 150, fatGoal: 65, carbPref: 'balanced', fastingProtocol: '16:8 Fast'
+        gender: 'male', currentWeight: 82, targetWeight: 72, proteinGoal: 160, calorieGoal: 2000, carbGoal: 150, fatGoal: 65, carbPref: 'balanced', fastingProtocol: '16:8 Fast', weeksToObjective: 12
       });
 
       const [showFastEditor, setShowFastEditor] = useState(false);
       const [editStartTime, setEditStartTime] = useState('');
       const [showPhasesModal, setShowPhasesModal] = useState(false);
       const [modalPhaseIndex, setModalPhaseIndex] = useState(0);
+      const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+      
+      useEffect(() => {
+        if ("Notification" in window) {
+           setNotificationsEnabled(Notification.permission === "granted");
+        }
+      }, []);
+
+      const requestNotifications = () => {
+        if ("Notification" in window) {
+          Notification.requestPermission().then(permission => {
+             setNotificationsEnabled(permission === "granted");
+             if (permission === "granted") {
+                 new Notification("Notifications Enabled", { body: "You will receive fasting alerts." });
+             }
+          });
+        }
+      };
 
       const [appData, setAppData] = useState(() => {
         const saved = localStorage.getItem('cutTrackerData');
@@ -196,10 +207,48 @@
 
       useEffect(() => { localStorage.setItem('cutTrackerData', JSON.stringify(appData)); }, [appData]);
       useEffect(() => {
-        let interval;
-        if (appData.currentFast?.isActive) interval = setInterval(() => setNow(Date.now()), 1000);
+        let interval = setInterval(() => {
+           const currentNow = Date.now();
+           setNow(currentNow);
+
+           if (notificationsEnabled) {
+              setAppData(prev => {
+                  let changed = false;
+                  const newAppData = {...prev};
+
+                  if (newAppData.currentFast?.isActive) {
+                      const fast = newAppData.currentFast;
+                      const elapsedHours = (currentNow - new Date(fast.startTime).getTime()) / (1000 * 3600);
+                      if (elapsedHours >= fast.targetHours && !fast.notifiedEnd) {
+                          new Notification("Fasting Complete!", { body: `You've reached your ${fast.targetHours} hour target.` });
+                          newAppData.currentFast = {...fast, notifiedEnd: true};
+                          changed = true;
+                      }
+                  } else {
+                      const log = newAppData.logs[today];
+                      const fasts = log?.completedFasts || [];
+                      if (fasts.length > 0) {
+                          const lastFast = fasts[fasts.length - 1];
+                          if (lastFast.endTime) {
+                              const eatingWindow = 24 - lastFast.targetHours;
+                              const elapsedEatingH = (currentNow - lastFast.endTime) / (1000 * 3600);
+                              if (elapsedEatingH >= eatingWindow && !lastFast.notifiedStart) {
+                                  new Notification("Time to Fast!", { body: `Your ${eatingWindow}h eating window is complete. Time to start the next fast.` });
+                                  const newLog = {...log, completedFasts: [...fasts]};
+                                  newLog.completedFasts[fasts.length - 1] = {...lastFast, notifiedStart: true};
+                                  newAppData.logs = {...prev.logs, [today]: newLog};
+                                  changed = true;
+                              }
+                          }
+                      }
+                  }
+                  
+                  return changed ? newAppData : prev;
+              });
+           }
+        }, 1000);
         return () => clearInterval(interval);
-      }, [appData.currentFast?.isActive]);
+      }, [notificationsEnabled, today]);
 
       useEffect(() => {
         if (!appData.logs[today]) {
@@ -219,7 +268,19 @@
 
       const updateSettings = (updates) => { setAppData(prev => ({ ...prev, settings: { ...prev.settings, ...updates } })); };
       const handleDailyInput = (field, value) => { const num = parseFloat(value); updateTodayLog({ [field]: isNaN(num) ? 0 : num }); };
-      const handleSettingInput = (field, value) => { const num = parseFloat(value); updateSettings({ [field]: isNaN(num) ? 0 : num }); };
+      const handleSettingInput = (field, value) => {
+        const num = isNaN(parseFloat(value)) ? 0 : parseFloat(value);
+        setAppData(prev => {
+          const newSettings = { ...prev.settings, [field]: num };
+          if (['proteinGoal', 'carbGoal', 'fatGoal'].includes(field)) {
+            newSettings.calorieGoal = (newSettings.proteinGoal * 4) + (newSettings.carbGoal * 4) + (newSettings.fatGoal * 9);
+          } else if (field === 'calorieGoal') {
+            const { carbs, fat } = calculateMacros(prev.currentWeight || 82, newSettings.calorieGoal, newSettings.proteinGoal, prev.settings.carbPref || 'balanced');
+            newSettings.carbGoal = carbs; newSettings.fatGoal = fat;
+          }
+          return { ...prev, settings: newSettings };
+        });
+      };
 
       const handleStartFast = (retroactiveDate = null, target = null) => {
         const start = retroactiveDate ? new Date(retroactiveDate) : new Date();
@@ -238,7 +299,7 @@
           const log = prev.logs[today] || DEFAULT_LOG_OBJ;
           return {
             ...prev, currentFast: { isActive: false, startTime: null, targetHours: 16 },
-            logs: { ...prev.logs, [today]: { ...log, completedFasts: [...(log.completedFasts || []), { durationHours: Number(elapsedHours.toFixed(2)), targetHours: fast.targetHours }] } }
+            logs: { ...prev.logs, [today]: { ...log, completedFasts: [...(log.completedFasts || []), { durationHours: Number(elapsedHours.toFixed(2)), targetHours: fast.targetHours, endTime: Date.now() }] } }
           };
         });
       };
@@ -265,8 +326,24 @@
         });
       };
 
-      const renderWizard = () => (
-        <div className="min-h-screen bg-slate-950 flex justify-center items-center p-4 overflow-y-auto no-scrollbar">
+      const renderWizard = () => {
+        const tdeeLive = Math.round((wizardData.currentWeight || 82) * (wizardData.gender === 'male' ? 24 : 22) * 1.2);
+        const daysLive = Math.max(1, (wizardData.weeksToObjective || 1) * 7);
+        const totalLossKg = (wizardData.currentWeight || 82) - (wizardData.targetWeight || 72);
+        const deficitLive = Math.round((totalLossKg * 7700) / daysLive);
+        const weeklyLossKg = totalLossKg / (wizardData.weeksToObjective || 1);
+        
+        const absoluteMinDietCals = wizardData.gender === 'male' ? 1500 : 1200;
+        const proteinFloorCals = Math.round((wizardData.currentWeight || 82) * 2 * 4) + 300;
+        const safeFloor = Math.max(absoluteMinDietCals, proteinFloorCals);
+        
+        const targetCalsLive = Math.max(safeFloor, tdeeLive - deficitLive);
+        
+        const isCalsAggressive = targetCalsLive === safeFloor && (tdeeLive - deficitLive < safeFloor);
+        const isRateAggressive = weeklyLossKg > 1.0 && totalLossKg > 0;
+
+        return (
+          <div className="min-h-screen bg-slate-950 flex justify-center items-center p-4 overflow-y-auto no-scrollbar">
           <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6">
             {wizardStep === 1 && (
               <div className="text-center space-y-6 animate-in fade-in zoom-in">
@@ -290,20 +367,38 @@
                 </div>
                 <div><label className="text-xs text-slate-500 font-bold uppercase">Current Weight (kg)</label><input type="number" value={wizardData.currentWeight} onChange={e=>setWizardData({...wizardData, currentWeight: Number(e.target.value)})} className="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-blue-500" /></div>
                 <div><label className="text-xs text-slate-500 font-bold uppercase">Target Weight (kg)</label><input type="number" value={wizardData.targetWeight} onChange={e=>setWizardData({...wizardData, targetWeight: Number(e.target.value)})} className="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-blue-500" /></div>
+                <div><label className="text-xs text-slate-500 font-bold uppercase">Weeks to Goal</label><input type="number" value={wizardData.weeksToObjective} onChange={e=>setWizardData({...wizardData, weeksToObjective: Number(e.target.value)})} className="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-blue-500" /></div>
+                
+                <div className="bg-slate-900 border border-slate-700/50 p-4 rounded-2xl shadow-inner">
+                  <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-3 flex items-center justify-between">
+                    <span><i className="fas fa-calculator mr-1"></i> Live Projection</span>
+                  </div>
+                  <div className="flex justify-between items-center text-center divide-x divide-slate-800">
+                     <div className="flex-1 border-slate-800"><div className="text-[9px] uppercase font-bold text-slate-500 mb-1">Maint. TDEE</div><div className="font-mono text-slate-300 font-bold">{tdeeLive}</div></div>
+                     <div className="flex-1 border-slate-800"><div className="text-[9px] uppercase font-bold text-slate-500 mb-1">Weekly Loss</div><div className={`font-mono font-bold ${isRateAggressive ? 'text-rose-400' : 'text-blue-400'}`}>{weeklyLossKg > 0 ? `-${weeklyLossKg.toFixed(2)}kg` : 0}</div></div>
+                     <div className="flex-1 border-slate-800"><div className="text-[9px] uppercase font-bold text-slate-500 mb-1">Target Cals</div><div className={`font-mono text-lg font-black ${isCalsAggressive ? 'text-amber-500' : 'text-emerald-400'}`}>{targetCalsLive}</div></div>
+                  </div>
+                  {(isRateAggressive || isCalsAggressive) && (
+                    <div className="mt-4 bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl flex flex-col gap-2 animate-in fade-in zoom-in">
+                      {isRateAggressive && <div className="flex gap-2 text-rose-400 text-xs text-left leading-relaxed"><i className="fas fa-exclamation-triangle mt-0.5"></i> <span><b>Extreme Weight Loss:</b> Losing &gt; 1kg/week can lead to muscle loss and metabolic slowdown (yo-yo effect). Add more weeks.</span></div>}
+                      {isCalsAggressive && <div className="flex gap-2 text-amber-500 text-xs text-left leading-relaxed"><i className="fas fa-exclamation-triangle mt-0.5"></i> <span><b>Crash Diet Alert:</b> Deficit too large. Calories floored to {safeFloor} kcal to prevent severe malnutrition.</span></div>}
+                    </div>
+                  )}
+                </div>
+
                 {wizardError && <p className="text-red-400 text-xs text-center">{wizardError}</p>}
                 <div className="flex gap-2">
                   <button onClick={()=>setWizardStep(1)} className="bg-slate-800 px-6 rounded-xl"><i className="fas fa-chevron-left"></i></button>
                   <button onClick={() => {
                     const loss = ((wizardData.currentWeight - wizardData.targetWeight)/wizardData.currentWeight)*100;
                     if(wizardData.targetWeight >= wizardData.currentWeight) return setWizardError("Target must be lower.");
+                    if(!wizardData.weeksToObjective || wizardData.weeksToObjective <= 0) return setWizardError("Enter valid weeks.");
                     if(loss > 15) setWizardWarning("Target loss > 15% is aggressive. Proceed with caution.");
-                    const tdee = wizardData.currentWeight * (wizardData.gender === 'male' ? 24 : 22) * 1.2;
-                    const deficit = ((wizardData.currentWeight - wizardData.targetWeight)*7700)/60;
-                    let cals = Math.round(tdee - deficit);
+                    
                     const prot = Math.round(wizardData.currentWeight * 2);
-                    cals = Math.max(cals, (prot*4)+300);
-                    const {carbs, fat} = calculateMacros(wizardData.currentWeight, cals, prot, 'balanced');
-                    setWizardData({...wizardData, calorieGoal: cals, proteinGoal: prot, carbGoal: carbs, fatGoal: fat});
+                    const {carbs, fat} = calculateMacros(wizardData.currentWeight, targetCalsLive, prot, 'balanced');
+                    setWizardData({...wizardData, calorieGoal: targetCalsLive, proteinGoal: prot, carbGoal: carbs, fatGoal: fat});
+                    setWizardError('');
                     setWizardStep(3);
                   }} className="flex-1 bg-blue-600 py-4 rounded-xl font-bold">Next</button>
                 </div>
@@ -318,111 +413,92 @@
                   <div className="bg-slate-800 p-3 rounded-xl border border-slate-700"><label className="text-[10px] text-slate-500 font-bold uppercase">Carbs</label><input type="number" value={wizardData.carbGoal} onChange={e=>handleManualMacroChange('carbGoal', Number(e.target.value))} className="w-full bg-transparent text-xl font-bold outline-none" /></div>
                   <div className="bg-slate-800 p-3 rounded-xl border border-slate-700"><label className="text-[10px] text-slate-500 font-bold uppercase">Fat</label><input type="number" value={wizardData.fatGoal} onChange={e=>handleManualMacroChange('fatGoal', Number(e.target.value))} className="w-full bg-transparent text-xl font-bold outline-none" /></div>
                 </div>
-                <button onClick={() => {
-                  setAppData({...appData, wizardCompleted: true, startWeight: wizardData.currentWeight, currentWeight: wizardData.currentWeight, targetWeight: wizardData.targetWeight, settings: { ...appData.settings, proteinGoal: wizardData.proteinGoal, calorieGoal: wizardData.calorieGoal, carbGoal: wizardData.carbGoal, fatGoal: wizardData.fatGoal } });
-                }} className="w-full bg-emerald-600 py-4 rounded-xl font-bold">Launch Tracker</button>
+                <button onClick={() => setWizardStep(4)} className="w-full bg-blue-600 py-4 rounded-xl font-bold">Next <i className="fas fa-chevron-right ml-2"></i></button>
+              </div>
+            )}
+            {wizardStep === 4 && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right text-center pb-2">
+                <div className="flex justify-between items-start mb-2 absolute top-6 left-6">
+                  <button onClick={() => setWizardStep(3)} className="bg-slate-800/80 w-10 h-10 rounded-full flex justify-center items-center"><i className="fas fa-chevron-left"></i></button>
+                </div>
+                <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto border border-blue-500/20">
+                  <i className="fas fa-bell text-blue-500 text-3xl animate-pulse"></i>
+                </div>
+                <h2 className="text-xl font-bold">Stay on Track</h2>
+                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                  <p className="text-sm text-slate-300">Would you like to receive push alerts to notify you when it's precisely time to <span className="text-blue-400 font-bold">start</span> or <span className="text-emerald-400 font-bold">end</span> your fasts?</p>
+                </div>
+                <div className="space-y-3 pt-4">
+                  <button onClick={() => {
+                    requestNotifications();
+                    setAppData({...appData, wizardCompleted: true, startWeight: wizardData.currentWeight, currentWeight: wizardData.currentWeight, targetWeight: wizardData.targetWeight, settings: { ...appData.settings, proteinGoal: wizardData.proteinGoal, calorieGoal: wizardData.calorieGoal, carbGoal: wizardData.carbGoal, fatGoal: wizardData.fatGoal } });
+                  }} className="w-full bg-blue-600 py-4 rounded-xl font-bold border border-blue-500 shadow-lg shadow-blue-500/30">Enable Alerts</button>
+                  <button onClick={() => {
+                    setAppData({...appData, wizardCompleted: true, startWeight: wizardData.currentWeight, currentWeight: wizardData.currentWeight, targetWeight: wizardData.targetWeight, settings: { ...appData.settings, proteinGoal: wizardData.proteinGoal, calorieGoal: wizardData.calorieGoal, carbGoal: wizardData.carbGoal, fatGoal: wizardData.fatGoal } });
+                  }} className="w-full bg-slate-800 text-slate-300 py-4 rounded-xl font-bold border border-slate-700 hover:bg-slate-700 transition-all">Skip for now</button>
+                </div>
               </div>
             )}
           </div>
         </div>
       );
+      };
 
-      const FastingPhasesOverlay = () => {
+      const FastingPhasesModal = () => {
         const phase = FASTING_PHASES[modalPhaseIndex];
-        
-        // Handle physical scroll locking
-        useEffect(() => {
-          document.body.classList.add('overflow-hidden-fixed');
-          return () => document.body.classList.remove('overflow-hidden-fixed');
-        }, []);
-
         return (
-          <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col animate-in fade-in slide-in-from-bottom duration-300">
-            {/* Sticky Header */}
-            <div className={`shrink-0 px-6 py-4 flex items-center justify-between border-b border-white/10 bg-gradient-to-r ${phase.color}`}>
-              <div className="flex items-center gap-3">
-                <i className={`fas ${phase.icon} text-white text-xl`}></i>
-                <h3 className="font-black text-white tracking-tight">Stage {modalPhaseIndex + 1}: {phase.title}</h3>
-              </div>
-              <button 
-                onClick={() => setShowPhasesModal(false)}
-                className="w-10 h-10 flex items-center justify-center bg-black/20 rounded-full text-white active:scale-90 transition-all"
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-
-            {/* Scrollable Body */}
-            <div className="flex-1 overflow-y-auto px-6 py-8 no-scrollbar space-y-10">
-              {/* Headline */}
-              <div className="text-center space-y-4">
-                <div className="phase-badge inline-block px-4 py-1.5 rounded-full text-[10px] font-black text-white uppercase tracking-[0.2em]">
-                  {phase.min}{phase.max === 999 ? '+' : `-${phase.max}`} Hours In
+          <div className="fixed inset-0 z-[100] bg-slate-900 animate-in fade-in slide-in-from-bottom duration-300">
+            <div className="w-full h-[100dvh] flex flex-col relative overflow-hidden">
+              {/* Header */}
+              <div className={`p-8 pt-[max(2rem,env(safe-area-inset-top))] sm:p-10 text-center bg-gradient-to-br ${phase.color} relative overflow-hidden shrink-0`}>
+                <div className="absolute top-0 right-0 p-8 opacity-10"><i className={`fas ${phase.icon} text-9xl`}></i></div>
+                <button onClick={() => setShowPhasesModal(false)} className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 sm:top-6 sm:right-6 text-white/70 bg-black/20 w-10 h-10 flex items-center justify-center rounded-full hover:bg-black/40 transition-all z-10"><i className="fas fa-times"></i></button>
+                <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-white/30 backdrop-blur-lg shadow-xl">
+                  <i className={`fas ${phase.icon} text-white text-4xl`}></i>
                 </div>
-                <p className="text-slate-200 text-2xl font-bold leading-tight px-2">{phase.short}</p>
-                <p className="text-slate-400 text-sm leading-relaxed">{phase.description}</p>
+                <h3 className="text-3xl font-black text-white tracking-tight mb-2">{phase.title}</h3>
+                <div className="phase-badge inline-block px-4 py-1.5 rounded-full text-xs font-bold text-white/90 uppercase tracking-widest">
+                  {phase.min}{phase.max === 999 ? '+' : `-${phase.max}`} Hours
+                </div>
               </div>
 
-              {/* Markers Section */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2 px-1">
-                  <div className="h-px flex-1 bg-slate-800"></div>
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Internal Shifts</span>
-                  <div className="h-px flex-1 bg-slate-800"></div>
+              {/* Content */}
+              <div className="p-6 overflow-y-auto no-scrollbar flex-1 relative bg-slate-900">
+                <div className="mb-8">
+                  <p className="text-slate-300 text-lg font-medium leading-relaxed italic text-center px-2">"{phase.short}"</p>
+                  <p className="text-slate-400 text-sm mt-4 leading-relaxed text-center">{phase.description}</p>
                 </div>
-                
-                {phase.details.map((item, i) => (
-                  <div key={i} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex gap-5 items-start">
-                    <div className={`w-1 h-12 rounded-full bg-gradient-to-b ${phase.color} opacity-50`}></div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-black text-slate-300 uppercase tracking-wide">{item.label}</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/5 text-blue-400 border border-blue-500/20">{item.val}</span>
+
+                <div className="space-y-4 mb-8">
+                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-2">Metabolic Markers</h4>
+                  {phase.details.map((item, i) => (
+                    <div key={i} className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700/50 flex gap-4">
+                      <div className="w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-transparent"></div>
+                      <div>
+                        <div className="flex justify-between items-baseline mb-1">
+                          <span className="text-xs font-bold text-slate-300">{item.label}</span>
+                          <span className="text-[10px] font-black text-blue-400 uppercase">{item.val}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 leading-normal">{item.text}</p>
                       </div>
-                      <p className="text-xs text-slate-500 leading-relaxed">{item.text}</p>
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Tip Box */}
-              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-[2rem] p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                  <i className="fas fa-lightbulb text-4xl text-emerald-400"></i>
+                  ))}
                 </div>
-                <h4 className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <i className="fas fa-sparkles"></i> Experience Note
-                </h4>
-                <p className="text-sm text-slate-300 leading-relaxed font-medium">{phase.whatToExpect}</p>
+
+                <div className="bg-emerald-500/5 border border-emerald-500/10 p-5 rounded-3xl">
+                  <h4 className="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-2">
+                    <i className="fas fa-lightbulb"></i> What You Feel
+                  </h4>
+                  <p className="text-xs text-slate-300 leading-relaxed italic">{phase.whatToExpect}</p>
+                </div>
               </div>
 
-              {/* Spacer for Bottom Nav */}
-              <div className="h-24"></div>
-            </div>
-
-            {/* Bottom Nav Controls */}
-            <div className="shrink-0 p-6 bg-slate-900 border-t border-slate-800 flex items-center justify-between pb-[calc(1.5rem+var(--sab))]">
-              <button 
-                disabled={modalPhaseIndex === 0}
-                onClick={() => setModalPhaseIndex(m => m - 1)}
-                className="flex items-center gap-2 text-sm font-bold text-slate-400 disabled:opacity-0 active:scale-95 transition-all"
-              >
-                <i className="fas fa-chevron-left"></i> Previous
-              </button>
-              
-              <div className="flex gap-2">
-                {FASTING_PHASES.map((_, i) => (
-                  <div key={i} className={`h-1 rounded-full transition-all duration-300 ${i === modalPhaseIndex ? 'w-6 bg-emerald-500' : 'w-1.5 bg-slate-800'}`}></div>
-                ))}
+              {/* Nav */}
+              <div className="p-4 border-t border-slate-800 flex justify-between items-center bg-slate-900/90 shrink-0 backdrop-blur-md" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+                <button disabled={modalPhaseIndex === 0} onClick={() => setModalPhaseIndex(m => m - 1)} className="w-24 h-12 flex items-center justify-center text-slate-300 font-bold bg-slate-800 rounded-xl disabled:opacity-30 active:scale-95 transition-all"><i className="fas fa-chevron-left mr-2"></i> Prev</button>
+                <div className="flex gap-1.5">{FASTING_PHASES.map((_, i) => <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === modalPhaseIndex ? 'w-6 bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'w-1.5 bg-slate-700'}`}></div>)}</div>
+                <button disabled={modalPhaseIndex === FASTING_PHASES.length - 1} onClick={() => setModalPhaseIndex(m => m + 1)} className="w-24 h-12 flex items-center justify-center text-slate-300 font-bold bg-slate-800 rounded-xl disabled:opacity-30 active:scale-95 transition-all">Next <i className="fas fa-chevron-right ml-2"></i></button>
               </div>
-
-              <button 
-                disabled={modalPhaseIndex === FASTING_PHASES.length - 1}
-                onClick={() => setModalPhaseIndex(m => m + 1)}
-                className="flex items-center gap-2 text-sm font-bold text-emerald-400 disabled:opacity-0 active:scale-95 transition-all"
-              >
-                Next <i className="fas fa-chevron-right"></i>
-              </button>
             </div>
           </div>
         );
@@ -500,11 +576,14 @@
                 <div className="text-slate-400 text-xs font-bold uppercase tracking-widest"><i className="fas fa-pills"></i> Supplements</div>
                 <div className="grid grid-cols-1 gap-2">
                    {appData.settings.supplements.map(s => (
-                     <button key={s} onClick={()=>updateSupplement(s)} className="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-700 active:scale-[0.98] transition-all"><span className="capitalize font-bold text-sm tracking-tight">{s}</span><div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${log.supplements?.[s]?'bg-emerald-500 shadow-lg shadow-emerald-500/40':'bg-slate-800'}`}>{log.supplements?.[s] && <i className="fas fa-check text-[10px]"></i>}</div></button>
+                     <button key={s} onClick={() => {
+                         const curr = log.supplements || {};
+                         updateTodayLog({supplements: {...curr, [s]: !curr[s]}});
+                     }} className="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-700 active:scale-[0.98] transition-all"><span className="capitalize font-bold text-sm tracking-tight">{s}</span><div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${log.supplements?.[s]?'bg-emerald-500 shadow-lg shadow-emerald-500/40':'bg-slate-800'}`}>{log.supplements?.[s] && <i className="fas fa-check text-[10px]"></i>}</div></button>
                    ))}
                 </div>
              </div>
-             {showPhasesModal && <FastingPhasesOverlay />}
+             {showPhasesModal && <FastingPhasesModal />}
           </div>
         );
       };
@@ -557,16 +636,75 @@
       const renderSettings = () => (
         <div className="space-y-6 pb-safe-content animate-fade-in-up no-scrollbar">
            <h2 className="text-2xl font-bold">Setup</h2>
+           
            <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-xl space-y-4">
-              <div className="text-slate-400 text-xs font-bold uppercase tracking-widest">Daily Targets</div>
+              <div className="flex justify-between items-center mb-4">
+                 <div className="text-slate-400 text-xs font-bold uppercase tracking-widest"><i className="fas fa-bell"></i> Alerts & Notifications</div>
+              </div>
+              <div className="flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-700">
+                 <span className="text-sm font-bold">Push Notifications</span>
+                 <button onClick={() => {
+                     if (!notificationsEnabled) requestNotifications();
+                     else setNotificationsEnabled(false);
+                 }} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${notificationsEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-300'}`}>
+                    {notificationsEnabled ? 'Enabled' : 'Enable'}
+                 </button>
+              </div>
+              <p className="text-xs text-slate-500">Enable to get alerts when you should start or end fasting.</p>
+           </div>
+
+           <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-xl space-y-4">
+              <div className="text-slate-400 text-xs font-bold uppercase tracking-widest"><i className="fas fa-bullseye"></i> Daily Targets</div>
               <div className="grid grid-cols-2 gap-4">
-                 <div><label className="text-[10px] text-slate-500 font-bold uppercase">Protein</label><input type="number" value={appData.settings.proteinGoal} onChange={e=>handleSettingInput('proteinGoal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl font-bold" /></div>
-                 <div><label className="text-[10px] text-slate-500 font-bold uppercase">Calories</label><input type="number" value={appData.settings.calorieGoal} onChange={e=>handleSettingInput('calorieGoal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl font-bold" /></div>
-                 <div><label className="text-[10px] text-slate-500 font-bold uppercase">Carbs</label><input type="number" value={appData.settings.carbGoal} onChange={e=>handleSettingInput('carbGoal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl font-bold" /></div>
-                 <div><label className="text-[10px] text-slate-500 font-bold uppercase">Fat</label><input type="number" value={appData.settings.fatGoal} onChange={e=>handleSettingInput('fatGoal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl font-bold" /></div>
+                 <div><label className="text-[10px] text-slate-500 font-bold uppercase">Protein</label><input type="number" value={appData.settings.proteinGoal} onChange={e=>handleSettingInput('proteinGoal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl font-bold outline-none focus:border-blue-500" /></div>
+                 <div><label className="text-[10px] text-slate-500 font-bold uppercase">Calories</label><input type="number" value={appData.settings.calorieGoal} onChange={e=>handleSettingInput('calorieGoal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl font-bold outline-none focus:border-emerald-500" /></div>
+                 <div><label className="text-[10px] text-slate-500 font-bold uppercase">Carbs</label><input type="number" value={appData.settings.carbGoal} onChange={e=>handleSettingInput('carbGoal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl font-bold outline-none focus:border-amber-500" /></div>
+                 <div><label className="text-[10px] text-slate-500 font-bold uppercase">Fat</label><input type="number" value={appData.settings.fatGoal} onChange={e=>handleSettingInput('fatGoal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl font-bold outline-none focus:border-rose-500" /></div>
               </div>
            </div>
-           <button onClick={() => { if(confirm("Reset everything?")) localStorage.removeItem('cutTrackerData'), location.reload(); }} className="w-full py-4 text-red-500/50 font-bold text-xs uppercase tracking-widest">Clear All Data</button>
+
+           <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-xl space-y-4">
+              <div className="text-slate-400 text-xs font-bold uppercase tracking-widest"><i className="fas fa-pills"></i> Supplements</div>
+              {appData.settings.supplements.map((s, idx) => (
+                 <div key={idx} className="flex gap-2">
+                    <input type="text" value={s} onChange={(e) => {
+                       const newSupps = [...appData.settings.supplements];
+                       newSupps[idx] = e.target.value;
+                       updateSettings({supplements: newSupps});
+                    }} className="flex-1 bg-slate-900 border border-slate-700 p-3 rounded-xl font-bold outline-none focus:border-blue-500" />
+                    <button onClick={() => {
+                       const newSupps = appData.settings.supplements.filter((_, i) => i !== idx);
+                       updateSettings({supplements: newSupps});
+                    }} className="bg-red-500/10 hover:bg-red-500/20 text-red-500 w-12 rounded-xl transition-all"><i className="fas fa-trash"></i></button>
+                 </div>
+              ))}
+              <button onClick={() => updateSettings({supplements: [...appData.settings.supplements, 'New Supplement']})} className="w-full bg-slate-900 border border-slate-700 py-3 rounded-xl font-bold text-xs uppercase hover:bg-slate-800 transition-all">+ Add Supplement</button>
+           </div>
+
+           <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 shadow-xl space-y-4">
+              <div className="text-slate-400 text-xs font-bold uppercase tracking-widest"><i className="fas fa-bolt"></i> Quick Add Protein</div>
+              {appData.settings.quickAdds.map((item, idx) => (
+                 <div key={idx} className="flex gap-2">
+                    <input type="text" value={item.label} onChange={(e) => {
+                       const newAdds = [...appData.settings.quickAdds];
+                       newAdds[idx].label = e.target.value;
+                       updateSettings({quickAdds: newAdds});
+                    }} className="flex-1 w-0 bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm font-bold outline-none focus:border-blue-500" placeholder="Label" />
+                    <input type="number" value={item.amount} onChange={(e) => {
+                       const newAdds = [...appData.settings.quickAdds];
+                       newAdds[idx].amount = Number(e.target.value);
+                       updateSettings({quickAdds: newAdds});
+                    }} className="w-20 bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm font-bold outline-none focus:border-blue-500" placeholder="Amount" />
+                    <button onClick={() => {
+                       const newAdds = appData.settings.quickAdds.filter((_, i) => i !== idx);
+                       updateSettings({quickAdds: newAdds});
+                    }} className="bg-red-500/10 hover:bg-red-500/20 text-red-500 w-12 shrink-0 rounded-xl transition-all"><i className="fas fa-trash"></i></button>
+                 </div>
+              ))}
+              <button onClick={() => updateSettings({quickAdds: [...appData.settings.quickAdds, {label: 'New Item', amount: 10}]})} className="w-full bg-slate-900 border border-slate-700 py-3 rounded-xl font-bold text-xs uppercase hover:bg-slate-800 transition-all">+ Add Quick Add</button>
+           </div>
+
+           <button onClick={() => { if(confirm("Reset everything?")) localStorage.removeItem('cutTrackerData'), location.reload(); }} className="w-full py-4 text-red-500/50 font-bold text-xs uppercase tracking-widest hover:text-red-500 transition-all">Clear All Data</button>
         </div>
       );
 
@@ -603,7 +741,7 @@
       return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${ss.toString().padStart(2,'0')}`;
     };
 
-    const updateSupplement = (key) => { /* logic inside App component */ };
+    const updateSupplement = (key) => { /* logic inside App component if needed */ };
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
